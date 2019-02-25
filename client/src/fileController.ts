@@ -1,34 +1,39 @@
-import { workspace, ExtensionContext, window, languages, Hover, Uri } from 'vscode';
+import { workspace, Uri } from 'vscode';
+import { ProjectController } from './project.controller';
+import { Project } from './project.model';
 
 export class FileController {
 
-	public go(): void {
-		this.processAngularFile();
-		this.processTranslations();
-	}
+	constructor() { }
 
-	private processAngularFile(): void {
+	public processAngularFile(callback: (projects: Project[]) => void): void {
 		workspace.findFiles('**/angular.json', 'node_modules', 1).then(res => {
 			if (res.length > 0) {
-				workspace.openTextDocument(res[0]);
+				const projects = ProjectController.getProjects(res[0]);
+				callback(projects);
 			}
 		});
 	}
 
-	private processTranslations(): void {
+	public processTranslations(callback: () => void): void {
 		workspace.findFiles('**/*.xlf')
 			.then(
-				files => this.processTranslationFiles(files),
+				files => {
+					this.processTranslationFiles(files, callback);
+				},
 				r => console.log(`cannot find files: ${r.message}`)
 			);
 	}
 
-	private processTranslationFiles(files: Uri[]): void {
-		files.forEach(uri => {
-			workspace.openTextDocument(uri).then(d => {
-				const r = d;
-			});
+	private processTranslationFiles(files: Uri[], callback: () => void): void {
+		files.forEach((uri, index) => {
+			const z = index + 1;
+			workspace.openTextDocument(uri)
+				.then(_ => {
+					if (files.length === z) {
+						callback();
+					}
+				});
 		});
 	}
-
 }

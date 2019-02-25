@@ -1,30 +1,20 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
 
 import {
 	createConnection,
 	TextDocuments,
-	TextDocument,
 	ProposedFeatures,
 	InitializeParams,
-	DidChangeConfigurationNotification,
-	CompletionItem,
-	CompletionItemKind,
-	TextDocumentPositionParams
+	DidChangeConfigurationNotification
 } from 'vscode-languageserver';
 import { TranslationProvider } from './translationProvider';
+import { Project } from './project.model';
 
-// Create a connection for the server. The connection uses Node's IPC as a transport.
-// Also include all preview / proposed LSP features.
+
 let connection = createConnection(ProposedFeatures.all);
 
-const translationProvider = new TranslationProvider(connection);
-
-// Create a simple text document manager. The text document manager
-// supports full document sync only
 let documents: TextDocuments = new TextDocuments();
+
+const translationProvider = new TranslationProvider(connection, documents);
 
 let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
@@ -64,61 +54,34 @@ connection.onInitialized(async () => {
 });
 
 // client forces angular.json and *.xlf files opening
-documents.onDidOpen(e => {
+documents.onDidOpen((e) => {
+	// connection.console.log(e.document.uri);
 	translationProvider.processFile(e.document);
 });
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(async (change) => {
-	validateTextDocument(change.document);
+	translationProvider.processFile(change.document);
 });
-
-function validateTextDocument(textDocument: TextDocument): void {
-	// In this simple example we get the settings for every validate run.
-	translationProvider.validate(textDocument);
-}
 
 connection.onDidChangeWatchedFiles(_change => {
 	// Monitored files have change in VSCode
 	connection.console.log('We received an file change event');
 });
 
-// This handler provides the initial list of the completion items.
-connection.onCompletion(
-	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-		// The pass parameter contains the position of the text document in
-		// which code complete got requested. For the example we ignore this
-		// info and always provide the same completion items.
-		return [
-			{
-				label: 'TypeScript',
-				kind: CompletionItemKind.Text,
-				data: 1
-			},
-			{
-				label: 'JavaScript',
-				kind: CompletionItemKind.Text,
-				data: 2
-			}
-		];
-	}
-);
-
-// This handler resolves additional information for the item selected in
-// the completion list.
-connection.onCompletionResolve(
-	(item: CompletionItem): CompletionItem => {
-		if (item.data === 1) {
-			(item.detail = 'TypeScript details'),
-				(item.documentation = 'TypeScript documentation');
-		} else if (item.data === 2) {
-			(item.detail = 'JavaScript details'),
-				(item.documentation = 'JavaScript documentation');
+connection.onNotification((type: string, projects: Project[]) => {
+	switch (type) {
+		case 'projects': {
+			translationProvider.assignProjects(projects);
+			break;
 		}
-		return item;
+		case 'translationsLoaded': {
+			translationProvider.onTranslationLoaded();
+			break;
+		}
 	}
-);
+});
 
 /*
 connection.onDidOpenTextDocument((params) => {

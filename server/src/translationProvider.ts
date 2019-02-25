@@ -1,45 +1,61 @@
-import { TextDocument, DiagnosticSeverity, Diagnostic, Connection } from 'vscode-languageserver';
-import { Translation } from './models/Translation';
+import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments } from 'vscode-languageserver';
+import { Project } from './project.model';
 
 export class TranslationProvider {
-	private translations = new Array<Translation>();
-	
-	constructor(private connection: Connection) { }
+	private projects: Project[] = [];
+	private translations: any = {};
+
+	constructor(private connection: Connection, private documents: TextDocuments) { }
+
+	public assignProjects(projects: Project[]): any {
+		this.projects = projects;
+		this.assignProjectToTranslation();
+	}
+
+	public onTranslationLoaded(): void {
+		this.validateHtmlDocuments();
+	}
 
 	public processFile(textDocument: TextDocument): void {
 		if (this.isTranslationFile(textDocument)) {
-
-		} else if (this.isAngularJsonFile(textDocument)) {
-
+			this.processTranslationFile(textDocument);
+		} else if (this.isHtmlFile(textDocument)) {
+			this.processHtmlFile(textDocument);
 		}
 	}
 
-	public async validate(textDocument: TextDocument): Promise<void> {
+	private processHtmlFile(textDocument: TextDocument): void {
+		if (!this.projects || Object.keys(this.translations).length === 0) {
+			return;
+		}
 		this.doValidate(textDocument);
 	}
 
+	private validateHtmlDocuments(): void {
+		this.documents.all().forEach(textDocument => {
+			if (this.isHtmlFile(textDocument)) {
+				this.processHtmlFile(textDocument);
+			}
+		});
+	}
+
 	private isTranslationFile(textDocument: TextDocument): boolean {
-		return textDocument.languageId === 'xliff';
+		return textDocument.languageId === 'xml' &&
+			textDocument.uri.endsWith('.xlf');
 	}
 
-	private isAngularJsonFile(textDocument: TextDocument): boolean {
-		return textDocument.uri.toLocaleLowerCase().endsWith('angular.json');
-	}
-
-	private processAngularFile(textDocument: TextDocument): void {
-
+	private isHtmlFile(textDocument: TextDocument): boolean {
+		return textDocument.languageId === 'html';
 	}
 
 	private doValidate(textDocument: TextDocument): void {
 		// The validator creates diagnostics for all uppercase words length 2 and more
 		let text = textDocument.getText();
-		let pattern = /i18n.+["|']@@?(.+)["|']/g;
+		let pattern = /i18n.+["|']@@(.+?)["|']/g;
 		let m: RegExpExecArray | null;
 
-		let problems = 0;
 		let diagnostics: Diagnostic[] = [];
 		while (m = pattern.exec(text)) {
-			problems++;
 			const group = m[0];
 			let diagnostic: Diagnostic = {
 				severity: DiagnosticSeverity.Warning,
@@ -56,4 +72,101 @@ export class TranslationProvider {
 		// Send the computed diagnostics to VSCode.
 		this.connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 	}
+
+	private processTranslationFile(textDocument: TextDocument): void {
+		const parser = new TranslationParser();
+		const units = parser.getTransUnits(textDocument);
+		const proj = this.getProjectForTranslation(textDocument.uri);
+		const trans = <Translation>{
+			uri: textDocument.uri,
+			units: units,
+			project: proj
+		};
+		this.translations[trans.uri] = trans;
+		this.processHtmlFile(textDocument);
+	}
+
+	private getProjectForTranslation(uri: string): Project {
+		if (!this.projects) {
+			return null;
+		}
+		const proj = this.projects.find(p => {
+			if (uri.indexOf(p.translation.i18nFile)) {
+				return true;
+			}
+		});
+		return proj;
+	}
+
+	private assignProjectToTranslation(): void {
+		Object.keys(this.translations).forEach(key => {
+			const proj = this.getProjectForTranslation(key);
+			this.translations[key].project = proj;
+		});
+	}
+}
+
+export class TranslationParser {
+	private splitUnitsRegex = /<trans-unit(.|\n)*?<\/trans-unit>/gm;
+	private idRegex = /id=["|'](.+?)["|']/gm;
+	private sourceRegex = /<source>((.|\n)*?)<\/source>/gm;
+	private targetRegex = /<target>((.|\n)*?)<\/target>/gm;
+
+	public getTransUnits(document: TextDocument): TransUnit[] {
+		try {
+			let unitBlocks = this.getTransUnitsBlocks(document);
+			let units = this.processUnitBlocks(unitBlocks);
+			return units;
+		}
+		catch (ex) {
+			console.log(ex.message);
+		}
+
+		return [];
+	}
+
+	private getTransUnitsBlocks(document: TextDocument): RegExpExecArray[] {
+		let units = [];
+		let m: RegExpExecArray | null;
+		const text = document.getText();
+		while (m = this.splitUnitsRegex.exec(text)) {
+			units.push(m);
+		}
+		return units;
+	}
+
+	private processUnitBlocks(blocks: RegExpExecArray[]): TransUnit[] {
+		let units: TransUnit[] = [];
+		blocks.forEach(value => {
+			const text = value[0];
+			const id = this.idRegex.exec(text);
+			if (!id) {
+				return;
+			}
+			const source = this.sourceRegex.exec(text);
+			const target = this.targetRegex.exec(text);
+			units.push(<TransUnit>{
+				id: id[1],
+				source: source && source[1],
+				target: target && target[1],
+				sourceIndex: source && source.index,
+				targetIndex: target && target.index
+			});
+		});
+		return units;
+	}
+}
+
+export interface TransUnit {
+	id: string;
+	source: string;
+	target: string;
+	sourceIndex: number;
+	targetIndex: number;
+}
+
+export interface Translation {
+	uri: string;
+	units: TransUnit[];
+	project: Project;
 }

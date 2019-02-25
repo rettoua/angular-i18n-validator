@@ -10,9 +10,11 @@ import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
-	TransportKind
+	TransportKind,
+	NotificationType0
 } from 'vscode-languageclient';
 import { FileController } from './fileController';
+import { ProjectController } from './project.controller';
 
 let client: LanguageClient;
 
@@ -57,10 +59,6 @@ export async function activate(context: ExtensionContext) {
 		clientOptions
 	);
 
-	languages.getLanguages().then(l => {
-		var z = l;
-	});
-
 	languages.registerHoverProvider('html', {
 		provideHover(document, position, token) {
 			const range = document.getWordRangeAtPosition(position);
@@ -71,9 +69,18 @@ export async function activate(context: ExtensionContext) {
 
 	// Start the client. This will also launch the server
 	client.start();
-
 	const fileController = new FileController();
-	fileController.go();
+
+	client.onReady().then(_ => {
+		fileController.processAngularFile(projects => {
+			client.sendNotification('projects', [projects]);
+		});
+		fileController.processTranslations(() => {
+			client.sendNotification('translationsLoaded');
+		});
+	});
+
+
 }
 
 export function deactivate(): Thenable<void> | undefined {
