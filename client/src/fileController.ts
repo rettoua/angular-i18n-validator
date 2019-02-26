@@ -26,11 +26,12 @@ export class FileController {
 	}
 
 	private processTranslationFiles(files: Uri[], callback: () => void): void {
-		files.forEach((uri, index) => {
-			const z = index + 1;
+		let filesLoaded = 0;
+		const filesToLoad = files.length;
+		files.forEach(uri => {
 			workspace.openTextDocument(uri)
 				.then(_ => {
-					if (files.length === z) {
+					if (++filesLoaded === filesToLoad) {
 						callback();
 					}
 				});

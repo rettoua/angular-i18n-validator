@@ -56,13 +56,18 @@ connection.onInitialized(async () => {
 // client forces angular.json and *.xlf files opening
 documents.onDidOpen((e) => {
 	// connection.console.log(e.document.uri);
-	translationProvider.processFile(e.document);
+	try {
+		setTimeout(() => translationProvider.processFile(e.document), 1);
+	}
+	catch (ex) {
+		debugger;
+	}
 });
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(async (change) => {
-	translationProvider.processFile(change.document);
+	// translationProvider.processFile(change.document);
 });
 
 connection.onDidChangeWatchedFiles(_change => {
@@ -70,17 +75,12 @@ connection.onDidChangeWatchedFiles(_change => {
 	connection.console.log('We received an file change event');
 });
 
-connection.onNotification((type: string, projects: Project[]) => {
-	switch (type) {
-		case 'projects': {
-			translationProvider.assignProjects(projects);
-			break;
-		}
-		case 'translationsLoaded': {
-			translationProvider.onTranslationLoaded();
-			break;
-		}
-	}
+connection.onNotification("custom/projects", (projects: Project[]) => {
+	translationProvider.assignProjects(projects);
+});
+
+connection.onNotification("custom/translationsLoaded", () => {
+	translationProvider.onTranslationLoaded();
 });
 
 /*

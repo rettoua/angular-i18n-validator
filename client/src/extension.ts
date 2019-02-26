@@ -73,14 +73,13 @@ export async function activate(context: ExtensionContext) {
 
 	client.onReady().then(_ => {
 		fileController.processAngularFile(projects => {
-			client.sendNotification('projects', [projects]);
+			client.sendNotification('custom/projects', [projects]);
 		});
+
 		fileController.processTranslations(() => {
-			client.sendNotification('translationsLoaded');
+			client.sendNotification('custom/translationsLoaded');
 		});
 	});
-
-
 }
 
 export function deactivate(): Thenable<void> | undefined {

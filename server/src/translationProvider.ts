@@ -1,9 +1,9 @@
 import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments } from 'vscode-languageserver';
-import { Project } from './project.model';
+import { Project, ProjectTranslation } from './project.model';
 
 export class TranslationProvider {
 	private projects: Project[] = [];
-	private translations: any = {};
+	private translations: Translation[] = [];
 
 	constructor(private connection: Connection, private documents: TextDocuments) { }
 
@@ -13,6 +13,7 @@ export class TranslationProvider {
 	}
 
 	public onTranslationLoaded(): void {
+		this.assignProjectToTranslation();
 		this.validateHtmlDocuments();
 	}
 
@@ -82,7 +83,7 @@ export class TranslationProvider {
 			units: units,
 			project: proj
 		};
-		this.translations[trans.uri] = trans;
+		this.translations.push(trans);
 		this.processHtmlFile(textDocument);
 	}
 
@@ -91,7 +92,7 @@ export class TranslationProvider {
 			return null;
 		}
 		const proj = this.projects.find(p => {
-			if (uri.indexOf(p.translation.i18nFile)) {
+			if (uri.indexOf(p.translation.i18nFile) >= 0) {
 				return true;
 			}
 		});
@@ -99,18 +100,25 @@ export class TranslationProvider {
 	}
 
 	private assignProjectToTranslation(): void {
-		Object.keys(this.translations).forEach(key => {
-			const proj = this.getProjectForTranslation(key);
-			this.translations[key].project = proj;
+		if (this.translations.length === 0 || this.projects.length === 0) {
+			return;
+		}
+		this.translations.forEach(trans => {
+			const proj = this.getProjectForTranslation(trans.uri);
+			trans.project = proj;
 		});
 	}
+
+	// private getSupportedTranslationFiles(textDocument: TextDocument): ProjectTranslation[] {
+
+	// }
 }
 
 export class TranslationParser {
-	private splitUnitsRegex = /<trans-unit(.|\n)*?<\/trans-unit>/gm;
-	private idRegex = /id=["|'](.+?)["|']/gm;
-	private sourceRegex = /<source>((.|\n)*?)<\/source>/gm;
-	private targetRegex = /<target>((.|\n)*?)<\/target>/gm;
+	private splitUnitsRegex = /<trans-unit(.|\s|\n)*?<\/trans-unit>/gm;
+	private idRegex = /id=["|'](.+?)["|']/m;
+	private sourceRegex = /<source>((.|\s|\n)*?)<\/source>/m;
+	private targetRegex = /<target>((.|\s|\n)*?)<\/target>/m;
 
 	public getTransUnits(document: TextDocument): TransUnit[] {
 		try {
@@ -127,6 +135,7 @@ export class TranslationParser {
 
 	private getTransUnitsBlocks(document: TextDocument): RegExpExecArray[] {
 		let units = [];
+
 		let m: RegExpExecArray | null;
 		const text = document.getText();
 		while (m = this.splitUnitsRegex.exec(text)) {
