@@ -1,4 +1,3 @@
-
 import {
 	createConnection,
 	TextDocuments,
@@ -60,14 +59,14 @@ documents.onDidOpen((e) => {
 		setTimeout(() => translationProvider.processFile(e.document), 1);
 	}
 	catch (ex) {
-		debugger;
+
 	}
 });
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(async (change) => {
-	// translationProvider.processFile(change.document);
+	translationProvider.processFile(change.document);
 });
 
 connection.onDidChangeWatchedFiles(_change => {

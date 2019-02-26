@@ -1,6 +1,8 @@
 import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments } from 'vscode-languageserver';
 import { Project, ProjectTranslation } from './project.model';
 
+import matcher = require('matcher');
+
 export class TranslationProvider {
 	private projects: Project[] = [];
 	private translations: Translation[] = [];
@@ -50,21 +52,35 @@ export class TranslationProvider {
 	}
 
 	private doValidate(textDocument: TextDocument): void {
-		// The validator creates diagnostics for all uppercase words length 2 and more
 		let text = textDocument.getText();
 		let pattern = /i18n.+["|']@@(.+?)["|']/g;
 		let m: RegExpExecArray | null;
 
+		const trans = this.getSupportedTranslations(textDocument);
+		if (trans.length === 0) { return; }
+
 		let diagnostics: Diagnostic[] = [];
 		while (m = pattern.exec(text)) {
-			const group = m[0];
+			const group = m[1];
+
+			const missingTranslations = trans.filter(t => {
+				const unit = t.units.find(u => u.id === group);
+				return !unit;
+			});
+
+			if (missingTranslations.length === 0) {
+				continue;
+			}
+
+			const missed = missingTranslations.map(m => m.project.label).join(', ');
+
 			let diagnostic: Diagnostic = {
 				severity: DiagnosticSeverity.Warning,
 				range: {
 					start: textDocument.positionAt(m.index),
 					end: textDocument.positionAt(m.index + m[0].length)
 				},
-				message: `Missing translations found for ${m[1]}`
+				message: `Missed translation in '${missed}' project(-s)`
 			};
 
 			diagnostics.push(diagnostic);
@@ -75,16 +91,22 @@ export class TranslationProvider {
 	}
 
 	private processTranslationFile(textDocument: TextDocument): void {
+		const existTrans = this.translations.find(t => t.uri === textDocument.uri);
 		const parser = new TranslationParser();
 		const units = parser.getTransUnits(textDocument);
-		const proj = this.getProjectForTranslation(textDocument.uri);
-		const trans = <Translation>{
-			uri: textDocument.uri,
-			units: units,
-			project: proj
-		};
-		this.translations.push(trans);
-		this.processHtmlFile(textDocument);
+		if (!existTrans) {
+			const proj = this.getProjectForTranslation(textDocument.uri);
+			const trans = <Translation>{
+				uri: textDocument.uri,
+				units: units,
+				project: proj
+			};
+			this.translations.push(trans);
+		}
+		else {
+			existTrans.units = units;
+		}
+		this.validateHtmlDocuments();
 	}
 
 	private getProjectForTranslation(uri: string): Project {
@@ -109,9 +131,36 @@ export class TranslationProvider {
 		});
 	}
 
-	// private getSupportedTranslationFiles(textDocument: TextDocument): ProjectTranslation[] {
+	private getSupportedTranslations(textDocument: TextDocument): Translation[] {
+		const projects = this.projects.filter(p => this.isFileBelongsProject(p, textDocument.uri));
+		let trans = [];
+		if (projects.length === 0) {
+			return trans;
+		}
+		projects.forEach(p => {
+			const selectedTrans = this.translations.find(t => {
+				if (!t.project) {
+					return false;
+				}
+				return t.project.label === p.label;
+			});
+			if (selectedTrans) {
+				trans.push(selectedTrans);
+			}
+		});
+		return trans;
+	}
 
-	// }
+	private isFileBelongsProject(project: Project, uri: string): boolean {
+		if (uri.indexOf(project.root) < 0) {
+			return false;
+		}
+		const fileShouldBeExcluded = project.exclude.some(e => {
+			const matched = matcher.isMatch(uri, e + '*');
+			return matched;
+		});
+		return !fileShouldBeExcluded;
+	}
 }
 
 export class TranslationParser {
