@@ -1,20 +1,13 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
-
 import * as path from 'path';
-import { workspace, ExtensionContext, window, languages, Hover, Uri } from 'vscode';
+import { workspace, ExtensionContext, languages, Hover } from 'vscode';
 
 import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
-	TransportKind,
-	NotificationType0
+	TransportKind
 } from 'vscode-languageclient';
 import { FileController } from './fileController';
-import { ProjectController } from './project.controller';
 
 let client: LanguageClient;
 
@@ -59,13 +52,13 @@ export async function activate(context: ExtensionContext) {
 		clientOptions
 	);
 
-	languages.registerHoverProvider('html', {
-		provideHover(document, position, token) {
-			const range = document.getWordRangeAtPosition(position);
-			const word = document.getText(range);
-			return new Hover(`I am a hover of **${word}** !`);
-		}
-	});
+	// languages.registerHoverProvider('html', {
+	// 	provideHover(document, position) {
+	// 		const range = document.getWordRangeAtPosition(position);
+	// 		const word = document.getText(range);
+	// 		return new Hover(`I am a hover of **${word}** !`);
+	// 	}
+	// });
 
 	// Start the client. This will also launch the server
 	client.start();

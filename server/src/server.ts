@@ -3,7 +3,8 @@ import {
 	TextDocuments,
 	ProposedFeatures,
 	InitializeParams,
-	DidChangeConfigurationNotification
+	DidChangeConfigurationNotification,
+	Hover
 } from 'vscode-languageserver';
 import { TranslationProvider } from './translationProvider';
 import { Project } from './project.model';
@@ -32,7 +33,8 @@ connection.onInitialize((params: InitializeParams) => {
 			// Tell the client that the server supports code completion
 			completionProvider: {
 				resolveProvider: true
-			}
+			},
+			hoverProvider: true
 		}
 	};
 });
@@ -52,21 +54,15 @@ connection.onInitialized(async () => {
 	}
 });
 
-// client forces angular.json and *.xlf files opening
-documents.onDidOpen((e) => {
-	// connection.console.log(e.document.uri);
-	try {
-		setTimeout(() => translationProvider.processFile(e.document), 1);
-	}
-	catch (ex) {
-
-	}
-});
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(async (change) => {
 	translationProvider.processFile(change.document);
+});
+
+connection.onHover((event): Hover => {
+	return translationProvider.calculateHover(event);
 });
 
 connection.onDidChangeWatchedFiles(_change => {

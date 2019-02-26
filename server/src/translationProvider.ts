@@ -1,11 +1,13 @@
-import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments } from 'vscode-languageserver';
+import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Hover, TextDocumentPositionParams, Range } from 'vscode-languageserver';
 import { Project, ProjectTranslation } from './project.model';
 
 import matcher = require('matcher');
+import { URLSearchParams } from 'url';
 
 export class TranslationProvider {
 	private projects: Project[] = [];
 	private translations: Translation[] = [];
+	private words = {};
 
 	constructor(private connection: Connection, private documents: TextDocuments) { }
 
@@ -25,6 +27,39 @@ export class TranslationProvider {
 		} else if (this.isHtmlFile(textDocument)) {
 			this.processHtmlFile(textDocument);
 		}
+	}
+
+	public calculateHover(param: TextDocumentPositionParams): Hover {
+		let hover: Hover = null;
+		const doc = this.documents.get(param.textDocument.uri);
+		if (doc) {
+			const activeWords = <IdRange[]>this.words[param.textDocument.uri];
+			if (activeWords && activeWords.length > 0) {
+				const positin = doc.offsetAt(param.position);
+				const expectedWord = activeWords.find(w => {
+					return positin >= w.start
+						&& positin <= w.end;
+				});
+				if (expectedWord) {
+					const trans = this.getSupportedTranslations(doc);
+					if (trans.length > 0) {
+						const values = trans.map(t => {
+							const findTrans = t.units.find(u => u.id === expectedWord.id);
+							return {
+								label: t.project.label,
+								word: findTrans && findTrans.target
+							};
+						});
+
+						return <Hover>{
+							range: expectedWord.range,
+							contents: values.map(v => v.word).join(',')
+						};
+					}
+				}
+			}
+		}
+		return null;
 	}
 
 	private processHtmlFile(textDocument: TextDocument): void {
@@ -59,9 +94,21 @@ export class TranslationProvider {
 		const trans = this.getSupportedTranslations(textDocument);
 		if (trans.length === 0) { return; }
 
+		this.words[textDocument.uri] = [];
+
 		let diagnostics: Diagnostic[] = [];
 		while (m = pattern.exec(text)) {
 			const group = m[1];
+			const value = <IdRange>{
+				start: m.index,
+				end: m.index + m[0].length,
+				id: m[1],
+				range: {
+					start: textDocument.positionAt(m.index),
+					end: textDocument.positionAt(m.index + m[0].length)
+				}
+			};
+			this.words[textDocument.uri].push(value);
 
 			const missingTranslations = trans.filter(t => {
 				const unit = t.units.find(u => u.id === group);
@@ -227,4 +274,11 @@ export interface Translation {
 	uri: string;
 	units: TransUnit[];
 	project: Project;
+}
+
+export interface IdRange {
+	start: number;
+	end: number;
+	id: string;
+	range: Range;
 }
