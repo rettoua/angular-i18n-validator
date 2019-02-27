@@ -2,7 +2,6 @@ import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments
 import { Project, ProjectTranslation } from './project.model';
 
 import matcher = require('matcher');
-import { URLSearchParams } from 'url';
 
 export class TranslationProvider {
 	private projects: Project[] = [];
