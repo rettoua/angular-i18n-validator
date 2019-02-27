@@ -1,7 +1,10 @@
-import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Hover, TextDocumentPositionParams, Range } from 'vscode-languageserver';
+import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Hover, TextDocumentPositionParams, Range, MarkedString, MarkupContent } from 'vscode-languageserver';
 import { Project, ProjectTranslation } from './project.model';
 
 import matcher = require('matcher');
+import { TranslationParser } from './translationParser';
+import { IdRange } from './models/IdRange';
+import { Translation } from './models/Translation';
 
 export class TranslationProvider {
 	private projects: Project[] = [];
@@ -44,16 +47,12 @@ export class TranslationProvider {
 					if (trans.length > 0) {
 						const values = trans.map(t => {
 							const findTrans = t.units.find(u => u.id === expectedWord.id);
-							return {
+							return <HoverInfo>{
 								label: t.project.label,
-								word: findTrans && findTrans.target
+								translation: findTrans && findTrans.target
 							};
 						});
-
-						return <Hover>{
-							range: expectedWord.range,
-							contents: values.map(v => v.word).join(',')
-						};
+						return HoverBuilder.createPopup(expectedWord.range, expectedWord.id, values);
 					}
 				}
 			}
@@ -209,75 +208,38 @@ export class TranslationProvider {
 	}
 }
 
-export class TranslationParser {
-	private splitUnitsRegex = /<trans-unit(.|\s|\n)*?<\/trans-unit>/gm;
-	private idRegex = /id=["|'](.+?)["|']/m;
-	private sourceRegex = /<source>((.|\s|\n)*?)<\/source>/m;
-	private targetRegex = /<target>((.|\s|\n)*?)<\/target>/m;
+export interface HoverInfo {
+	label: string;
+	translation: string;
+}
 
-	public getTransUnits(document: TextDocument): TransUnit[] {
-		try {
-			let unitBlocks = this.getTransUnitsBlocks(document);
-			let units = this.processUnitBlocks(unitBlocks);
-			return units;
-		}
-		catch (ex) {
-			console.log(ex.message);
-		}
+export class HoverBuilder {
 
-		return [];
+	public static createPopup(range: Range, word: string, values: HoverInfo[]): Hover {
+		const builder = new HoverBuilder();
+		return builder.createPopup(range, word, values);
 	}
 
-	private getTransUnitsBlocks(document: TextDocument): RegExpExecArray[] {
-		let units = [];
-
-		let m: RegExpExecArray | null;
-		const text = document.getText();
-		while (m = this.splitUnitsRegex.exec(text)) {
-			units.push(m);
-		}
-		return units;
-	}
-
-	private processUnitBlocks(blocks: RegExpExecArray[]): TransUnit[] {
-		let units: TransUnit[] = [];
-		blocks.forEach(value => {
-			const text = value[0];
-			const id = this.idRegex.exec(text);
-			if (!id) {
-				return;
+	public createPopup(range: Range, word: string, values: HoverInfo[]): Hover {
+		let hoverText = this.getHeader(word);
+		values.forEach(value => hoverText += this.getDetailTranslation(value));
+		return <Hover>{
+			range: range,
+			contents: <MarkupContent>{
+				kind: "markdown",
+				value: hoverText
 			}
-			const source = this.sourceRegex.exec(text);
-			const target = this.targetRegex.exec(text);
-			units.push(<TransUnit>{
-				id: id[1],
-				source: source && source[1],
-				target: target && target[1],
-				sourceIndex: source && source.index,
-				targetIndex: target && target.index
-			});
-		});
-		return units;
+		};
 	}
-}
 
-export interface TransUnit {
-	id: string;
-	source: string;
-	target: string;
-	sourceIndex: number;
-	targetIndex: number;
-}
+	private getHeader(word: string): string {
+		return `Translations for \`${word}\` :
+***`;
+	}
 
-export interface Translation {
-	uri: string;
-	units: TransUnit[];
-	project: Project;
-}
-
-export interface IdRange {
-	start: number;
-	end: number;
-	id: string;
-	range: Range;
+	private getDetailTranslation(value: HoverInfo): string {
+		return `
+- **${value.label}**
+	- ${value.translation}`;
+	}
 }
