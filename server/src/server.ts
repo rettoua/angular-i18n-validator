@@ -30,10 +30,6 @@ connection.onInitialize((params: InitializeParams) => {
 	return {
 		capabilities: {
 			textDocumentSync: documents.syncKind,
-			// hoverProvider: true,
-			// executeCommandProvider: {
-			// 	commands: ['rettoua.goto_file']
-			// }
 		}
 	};
 });
@@ -55,13 +51,6 @@ connection.onRequest('rettoua.request', (args: any) => {
 documents.onDidChangeContent(async (change) => {
 	translationProvider.processFile(change.document);
 });
-
-// connection.onHover((event): Hover => {
-// 	if (event.textDocument.uri.endsWith('.html')) {
-// 		return translationProvider.calculateHover(event);
-// 	}
-// 	return null;
-// });
 
 connection.onNotification("custom/projects", (projects: Project[]) => {
 	translationProvider.assignProjects(projects);

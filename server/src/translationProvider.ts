@@ -1,10 +1,12 @@
-import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Hover, TextDocumentPositionParams, Range, MarkedString, MarkupContent, Position } from 'vscode-languageserver';
+import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Hover, TextDocumentPositionParams, MarkedString, MarkupContent, Position } from 'vscode-languageserver';
 import { Project, ProjectTranslation } from './project.model';
 
 import matcher = require('matcher');
 import { TranslationParser } from './translationParser';
 import { IdRange } from './models/IdRange';
 import { Translation } from './models/Translation';
+import { HoverBuilder } from './hoverBuilder';
+import { HoverInfo } from './models/HoverInfo';
 
 export class TranslationProvider {
 	private projects: Project[] = [];
@@ -213,42 +215,3 @@ export class TranslationProvider {
 	}
 }
 
-export interface HoverInfo {
-	label: string;
-	translation: string;
-	goToCommandArgs: CommandArgs<{}>;
-}
-
-export type CommandArgs<T> = T | null | undefined;
-
-export class HoverBuilder {
-
-	public static createPopup(range: Range, word: string, values: HoverInfo[]): any {
-		const builder = new HoverBuilder();
-		return builder.createPopup(range, word, values);
-	}
-
-	private createPopup(range: Range, word: string, values: HoverInfo[]): any {
-		let hoverText = this.getHeader(word);
-		values.forEach(value => hoverText += this.getDetailTranslation(value));
-		return {
-			range: range,
-			contents: hoverText
-		};
-	}
-
-	private getHeader(word: string): string {
-		return `Translations for \`${word}\` :
-***`;
-	}
-
-	private getDetailTranslation(value: HoverInfo): string {
-		const commandArgs = encodeURIComponent(JSON.stringify(value.goToCommandArgs));
-		return `
-[${value.label}](command:rettoua.goto_file?${commandArgs} "Go to translation")
-> ${value.translation}
-`;
-	}
-}
-
-// [${value.label}](command:rettoua.goto_file?myvalue "Go to translation")
