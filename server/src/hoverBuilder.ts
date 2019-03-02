@@ -20,8 +20,7 @@ export class HoverBuilder {
 	private getDetailTranslation(value: HoverInfo): string {
 		const commandArgs = encodeURIComponent(JSON.stringify(value.goToCommandArgs));
 		return `
-[${value.label}](command:rettoua.goto_file?${commandArgs} "Go to translation")
-> ${value.translation}
+[**${value.label}**](command:rettoua.goto_file?${commandArgs} "Go to translation") ${value.translation}
 `;
 	}
 }
