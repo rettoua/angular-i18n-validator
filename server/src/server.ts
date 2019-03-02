@@ -3,7 +3,8 @@ import {
 	TextDocuments,
 	ProposedFeatures,
 	InitializeParams,
-	DidChangeConfigurationNotification} from 'vscode-languageserver';
+	DidChangeConfigurationNotification
+} from 'vscode-languageserver';
 import { TranslationProvider } from './translationProvider';
 import { Project } from './project.model';
 
@@ -48,6 +49,10 @@ connection.onRequest('rettoua.hoverRequest', (args: any) => {
 
 connection.onRequest('rettoua.locationsRequest', (args: any) => {
 	return translationProvider.calculateLocations(args.url, args.position);
+});
+
+connection.onRequest('rettoua.referencesRequest', (args: any) => {
+	return translationProvider.calculateReferences(args.url, args.position);
 });
 
 documents.onDidChangeContent(async (change) => {

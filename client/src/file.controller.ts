@@ -15,8 +15,16 @@ export class FileController {
 		});
 	}
 
+	public processHtmlFiles(): void {
+		workspace.findFiles('**/*.html', 'node_modules').then(res => {
+			if (res.length > 0) {
+				res.forEach(uri => workspace.openTextDocument(uri));
+			}
+		});
+	}
+
 	public processTranslations(callback: () => void): void {
-		workspace.findFiles('**/*.xlf')
+		workspace.findFiles('**/*.xlf', 'node_modules')
 			.then(
 				files => {
 					this.processTranslationFiles(files, callback);

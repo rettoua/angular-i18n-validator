@@ -96,6 +96,40 @@ export class TranslationProvider {
 		return null;
 	}
 
+	public calculateReferences(url: string, position: number): any {
+		const doc = this.documents.get(url);
+		if (doc) {
+			const activeWords = <IdRange[]>this.words[url];
+			if (activeWords && activeWords.length > 0) {
+				const expectedWord = activeWords.find(w => {
+					return position >= w.start
+						&& position <= w.end;
+				});
+				if (expectedWord) {
+					let refs = <any>[];
+					Object.keys(this.words).forEach(key => {
+						const fileWords = this.words[key];
+						refs = refs.concat(fileWords.filter(word => {
+							if (word.id == expectedWord.id) {
+								word.url = key;
+								return true;
+							}
+							return false;
+						}));
+					});
+
+					if (refs.length > 0) {
+						return refs.map(ref => <any>{
+							url: ref.url,
+							range: ref.range
+						});
+					}
+				}
+			}
+		}
+		return null;
+	}
+
 	private processHtmlFile(textDocument: TextDocument): void {
 		if (!this.projects || Object.keys(this.translations).length === 0) {
 			return;

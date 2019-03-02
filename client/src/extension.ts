@@ -8,7 +8,8 @@ import {
 	TransportKind
 } from 'vscode-languageclient';
 import { FileController } from './file.controller';
-import { HoverController, DefinitionController } from './hover.controller';
+import { HoverController } from './hover.controller';
+import { DefinitionController, ReferenceController } from "./definition.controller";
 
 let client: LanguageClient;
 
@@ -50,6 +51,7 @@ export async function activate(context: ExtensionContext) {
 	const fileController = new FileController();
 	const hoverController = new HoverController(client);
 	const definitionController = new DefinitionController(client);
+	const referencesController = new ReferenceController(client);
 	client.onReady().then(_ => {
 		fileController.processAngularFile(projects => {
 			client.sendNotification('custom/projects', [projects]);
@@ -58,6 +60,8 @@ export async function activate(context: ExtensionContext) {
 		fileController.processTranslations(() => {
 			client.sendNotification('custom/translationsLoaded');
 		});
+
+		fileController.processHtmlFiles();
 	});
 
 	languages.registerHoverProvider({ scheme: 'file', language: 'html' }, {
@@ -66,6 +70,10 @@ export async function activate(context: ExtensionContext) {
 
 	languages.registerDefinitionProvider({ scheme: 'file', language: 'html' }, {
 		provideDefinition: definitionController.getDefinition.bind(definitionController)
+	});
+
+	languages.registerReferenceProvider({ scheme: 'file', language: 'html' }, {
+		provideReferences: referencesController.getReferences.bind(referencesController)
 	});
 
 	context.subscriptions.push(commands.registerCommand('rettoua.goto_file', (args) => {
