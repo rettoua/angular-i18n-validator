@@ -50,7 +50,7 @@ export class TranslationParser {
 			units.push(<TransUnit>{
 				id: id[1],
 				source: source && source[1],
-				target: target && target[1],
+				target: (target && target[1]) || '`<no translation>`',
 				sourceIndex: source && source.index,
 				targetIndex: target && target.index,
 				targetRange: range

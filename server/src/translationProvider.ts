@@ -49,7 +49,7 @@ export class TranslationProvider {
 							const findTrans = t.units.find(u => u.id === expectedWord.id);
 							return <HoverInfo>{
 								label: t.project.label,
-								translation: findTrans && findTrans.target,
+								translation: (findTrans && findTrans.target) || '`no translation`',
 								goToCommandArgs: {
 									uri: t.uri,
 									range: findTrans && findTrans.targetRange
