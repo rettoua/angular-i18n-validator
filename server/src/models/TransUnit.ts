@@ -1,4 +1,4 @@
-import { Position } from 'vscode-languageserver';
+import { Range } from 'vscode-languageserver';
 
 export interface TransUnit {
 	id: string;
@@ -6,5 +6,5 @@ export interface TransUnit {
 	target: string;
 	sourceIndex: number;
 	targetIndex: number;
-	targetRange: Position;
+	targetRange: Range;
 }

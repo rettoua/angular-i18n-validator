@@ -3,3 +3,4 @@ export interface HoverResponse {
 	contents: string;
 	range: Range;
 }
+

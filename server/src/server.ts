@@ -3,9 +3,7 @@ import {
 	TextDocuments,
 	ProposedFeatures,
 	InitializeParams,
-	DidChangeConfigurationNotification,
-	Hover
-} from 'vscode-languageserver';
+	DidChangeConfigurationNotification} from 'vscode-languageserver';
 import { TranslationProvider } from './translationProvider';
 import { Project } from './project.model';
 
@@ -44,8 +42,12 @@ connection.onInitialized(async () => {
 	}
 });
 
-connection.onRequest('rettoua.request', (args: any) => {
+connection.onRequest('rettoua.hoverRequest', (args: any) => {
 	return translationProvider.calculateHover(args.url, args.position);
+});
+
+connection.onRequest('rettoua.locationsRequest', (args: any) => {
+	return translationProvider.calculateLocations(args.url, args.position);
 });
 
 documents.onDidChangeContent(async (change) => {

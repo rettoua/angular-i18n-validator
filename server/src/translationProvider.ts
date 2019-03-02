@@ -67,6 +67,35 @@ export class TranslationProvider {
 		return null;
 	}
 
+	public calculateLocations(url: string, position: number): any {
+		const doc = this.documents.get(url);
+		if (doc) {
+			const activeWords = <IdRange[]>this.words[url];
+			if (activeWords && activeWords.length > 0) {
+				const expectedWord = activeWords.find(w => {
+					return position >= w.start
+						&& position <= w.end;
+				});
+				if (expectedWord) {
+					const trans = this.getSupportedTranslations(doc);
+					if (trans.length > 0) {
+						const locations = trans.map(t => {
+							const findTrans = t.units.find(u => u.id === expectedWord.id);
+							if (findTrans) {
+								return {
+									uri: t.uri,
+									range: findTrans.targetRange
+								};
+							}
+						});
+						return locations;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
 	private processHtmlFile(textDocument: TextDocument): void {
 		if (!this.projects || Object.keys(this.translations).length === 0) {
 			return;
