@@ -1,4 +1,4 @@
-import { TextDocument } from 'vscode-languageserver';
+import { TextDocument, Range } from 'vscode-languageserver';
 import { TransUnit } from "./models/TransUnit";
 
 export class TranslationParser {
@@ -10,7 +10,7 @@ export class TranslationParser {
 	public getTransUnits(document: TextDocument): TransUnit[] {
 		try {
 			let unitBlocks = this.getTransUnitsBlocks(document);
-			let units = this.processUnitBlocks(unitBlocks);
+			let units = this.processUnitBlocks(document, unitBlocks);
 			return units;
 		}
 		catch (ex) {
@@ -29,7 +29,7 @@ export class TranslationParser {
 		return units;
 	}
 
-	private processUnitBlocks(blocks: RegExpExecArray[]): TransUnit[] {
+	private processUnitBlocks(document: TextDocument, blocks: RegExpExecArray[]): TransUnit[] {
 		let units: TransUnit[] = [];
 		blocks.forEach(value => {
 			const text = value[0];
@@ -39,12 +39,21 @@ export class TranslationParser {
 			}
 			const source = this.sourceRegex.exec(text);
 			const target = this.targetRegex.exec(text);
+			let range = null;
+			if (target) {
+				const diff = (target[0].length - target[1].length) / 2;
+				range = <Range>{
+					start: document.positionAt(value.index + target.index + diff),
+					end: document.positionAt(value.index + target.index + target[1].length + diff)
+				};
+			}
 			units.push(<TransUnit>{
 				id: id[1],
 				source: source && source[1],
 				target: target && target[1],
 				sourceIndex: source && source.index,
-				targetIndex: target && target.index
+				targetIndex: target && target.index,
+				targetRange: range
 			});
 		});
 		return units;

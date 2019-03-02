@@ -1,4 +1,4 @@
-import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Hover, TextDocumentPositionParams, Range, MarkedString, MarkupContent } from 'vscode-languageserver';
+import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Hover, TextDocumentPositionParams, Range, MarkedString, MarkupContent, Position } from 'vscode-languageserver';
 import { Project, ProjectTranslation } from './project.model';
 
 import matcher = require('matcher');
@@ -31,16 +31,14 @@ export class TranslationProvider {
 		}
 	}
 
-	public calculateHover(param: TextDocumentPositionParams): Hover {
-		let hover: Hover = null;
-		const doc = this.documents.get(param.textDocument.uri);
+	public calculateHover(url: string, position: number): any {
+		const doc = this.documents.get(url);
 		if (doc) {
-			const activeWords = <IdRange[]>this.words[param.textDocument.uri];
+			const activeWords = <IdRange[]>this.words[url];
 			if (activeWords && activeWords.length > 0) {
-				const positin = doc.offsetAt(param.position);
 				const expectedWord = activeWords.find(w => {
-					return positin >= w.start
-						&& positin <= w.end;
+					return position >= w.start
+						&& position <= w.end;
 				});
 				if (expectedWord) {
 					const trans = this.getSupportedTranslations(doc);
@@ -49,10 +47,17 @@ export class TranslationProvider {
 							const findTrans = t.units.find(u => u.id === expectedWord.id);
 							return <HoverInfo>{
 								label: t.project.label,
-								translation: findTrans && findTrans.target
+								translation: findTrans && findTrans.target,
+								goToCommandArgs: {
+									uri: t.uri,
+									range: findTrans && findTrans.targetRange
+								}
 							};
 						});
-						return HoverBuilder.createPopup(expectedWord.range, expectedWord.id, values);
+						return HoverBuilder.createPopup(
+							expectedWord.range,
+							expectedWord.id,
+							values);
 					}
 				}
 			}
@@ -211,24 +216,24 @@ export class TranslationProvider {
 export interface HoverInfo {
 	label: string;
 	translation: string;
+	goToCommandArgs: CommandArgs<{}>;
 }
+
+export type CommandArgs<T> = T | null | undefined;
 
 export class HoverBuilder {
 
-	public static createPopup(range: Range, word: string, values: HoverInfo[]): Hover {
+	public static createPopup(range: Range, word: string, values: HoverInfo[]): any {
 		const builder = new HoverBuilder();
 		return builder.createPopup(range, word, values);
 	}
 
-	public createPopup(range: Range, word: string, values: HoverInfo[]): Hover {
+	private createPopup(range: Range, word: string, values: HoverInfo[]): any {
 		let hoverText = this.getHeader(word);
 		values.forEach(value => hoverText += this.getDetailTranslation(value));
-		return <Hover>{
+		return {
 			range: range,
-			contents: <MarkupContent>{
-				kind: "markdown",
-				value: hoverText
-			}
+			contents: hoverText
 		};
 	}
 
@@ -238,8 +243,12 @@ export class HoverBuilder {
 	}
 
 	private getDetailTranslation(value: HoverInfo): string {
+		const commandArgs = encodeURIComponent(JSON.stringify(value.goToCommandArgs));
 		return `
-- **${value.label}**
-	- ${value.translation}`;
+[${value.label}](command:rettoua.goto_file?${commandArgs} "Go to translation")
+> ${value.translation}
+`;
 	}
 }
+
+// [${value.label}](command:rettoua.goto_file?myvalue "Go to translation")
