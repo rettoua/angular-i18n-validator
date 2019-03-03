@@ -1,5 +1,7 @@
 ## Angular 6+ i18n `vscode` extension
 
+> [Extension Marketplace](https://marketplace.visualstudio.com/items?itemName=OleksandrReznichenko.angular-i18n-validator)
+
 Extension for validating i18n for Angular 6+ projects with adding peace of functionality for seeing and navigating to translations.. Supports multiple projects specified in `Angular.json` and takes into account current context with showing and navigating only to relevant translations. 
 
 ### Checks translations existence and showing available ones in the hover
