@@ -3,7 +3,8 @@ import {
 	TextDocuments,
 	ProposedFeatures,
 	InitializeParams,
-	DidChangeConfigurationNotification
+	DidChangeConfigurationNotification,
+	TextDocument
 } from 'vscode-languageserver';
 import { TranslationProvider } from './translationProvider';
 import { Project } from './project.model';
@@ -28,7 +29,7 @@ connection.onInitialize((params: InitializeParams) => {
 
 	return {
 		capabilities: {
-			textDocumentSync: documents.syncKind,
+			textDocumentSync: documents.syncKind
 		}
 	};
 });
@@ -55,7 +56,7 @@ connection.onRequest('rettoua.referencesRequest', (args: any) => {
 	return translationProvider.calculateReferences(args.url, args.position);
 });
 
-documents.onDidChangeContent(async (change) => {
+documents.onDidChangeContent(change => {
 	translationProvider.processFile(change.document);
 });
 

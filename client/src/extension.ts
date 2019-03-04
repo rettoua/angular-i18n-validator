@@ -60,8 +60,6 @@ export async function activate(context: ExtensionContext) {
 		fileController.processTranslations(() => {
 			client.sendNotification('custom/translationsLoaded');
 		});
-
-		fileController.processHtmlFiles();
 	});
 
 	languages.registerHoverProvider({ scheme: 'file', language: 'html' }, {
