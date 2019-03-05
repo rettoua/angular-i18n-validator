@@ -1,4 +1,4 @@
-import { workspace, Uri } from 'vscode';
+import { workspace, Uri, RelativePattern } from 'vscode';
 import { ProjectController } from './project.controller';
 import { Project } from './project.model';
 
@@ -15,11 +15,14 @@ export class FileController {
 		});
 	}
 
-	public processHtmlFiles(): void {
-		workspace.findFiles('**/*.html', 'node_modules').then(res => {
-			if (res.length > 0) {
-				res.forEach(uri => workspace.openTextDocument(uri));
-			}
+	public processHtmlFiles(projects: Project[], callback: (urls: string[]) => void): void {
+		let workspaceFolder = workspace.workspaceFolders[0].uri.path;
+		projects.forEach(project => {
+			const url = `${workspaceFolder}/${project.root}`;
+			workspace.findFiles(new RelativePattern(url, '**/*.html'), 'node_modules').then(res => {
+				const urls = res.map(r => r.fsPath);
+				callback(urls);
+			});
 		});
 	}
 

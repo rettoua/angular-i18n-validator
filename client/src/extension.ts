@@ -52,16 +52,21 @@ export async function activate(context: ExtensionContext) {
 	const hoverController = new HoverController(client);
 	const definitionController = new DefinitionController(client);
 	const referencesController = new ReferenceController(client);
+
 	client.onReady().then(_ => {
+
 		fileController.processAngularFile(projects => {
 			client.sendNotification('custom/projects', [projects]);
+
+			fileController.processTranslations(() => {
+				client.sendNotification('custom/translationsLoaded');
+
+				fileController.processHtmlFiles(projects, (urls: string[]) => {
+					client.sendNotification('custom/htmlFiles', [urls]);
+				});
+			});
 		});
 
-		fileController.processTranslations(() => {
-			client.sendNotification('custom/translationsLoaded');
-		});
-
-		fileController.processHtmlFiles();
 	});
 
 	languages.registerHoverProvider({ scheme: 'file', language: 'html' }, {

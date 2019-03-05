@@ -1,5 +1,5 @@
-import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Hover, TextDocumentPositionParams, MarkedString, MarkupContent, Position } from 'vscode-languageserver';
-import { Project, ProjectTranslation } from './project.model';
+import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments } from 'vscode-languageserver';
+import { Project } from './project.model';
 
 import matcher = require('matcher');
 import { TranslationParser } from './translationParser';
@@ -7,6 +7,7 @@ import { IdRange } from './models/IdRange';
 import { Translation } from './models/Translation';
 import { HoverBuilder } from './hoverBuilder';
 import { HoverInfo } from './models/HoverInfo';
+import { readFileSync } from 'fs';
 
 export class TranslationProvider {
 	private projects: Project[] = [];
@@ -23,6 +24,15 @@ export class TranslationProvider {
 	public onTranslationLoaded(): void {
 		this.assignProjectToTranslation();
 		this.validateHtmlDocuments();
+	}
+
+	public onHtmlFilesFound(urls: string[]): void {
+		urls.forEach(url => {
+			const buffer = readFileSync(url);
+			const content = buffer.toString();
+			const doc = TextDocument.create(url, 'html', 1, content);
+			this.doValidate(doc, false);
+		});
 	}
 
 	public processFile(textDocument: TextDocument): void {
@@ -154,7 +164,8 @@ export class TranslationProvider {
 		return textDocument.languageId === 'html';
 	}
 
-	private doValidate(textDocument: TextDocument): void {
+	private doValidate(textDocument: TextDocument, withDiagnistics: boolean = true): void {
+
 		let text = textDocument.getText();
 		let pattern = /i18n.+["|']@@(.+?)["|']/g;
 		let m: RegExpExecArray | null;
@@ -177,6 +188,8 @@ export class TranslationProvider {
 				}
 			};
 			this.words[textDocument.uri].push(value);
+
+			if (!withDiagnistics) { continue; }
 
 			const missingTranslations = trans.filter(t => {
 				const unit = t.units.find(u => u.id === group);

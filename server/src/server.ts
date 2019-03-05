@@ -8,7 +8,6 @@ import {
 import { TranslationProvider } from './translationProvider';
 import { Project } from './project.model';
 
-
 let connection = createConnection(ProposedFeatures.all);
 
 let documents: TextDocuments = new TextDocuments();
@@ -66,6 +65,12 @@ connection.onNotification("custom/projects", (projects: Project[]) => {
 connection.onNotification("custom/translationsLoaded", () => {
 	translationProvider.onTranslationLoaded();
 });
+
+connection.onNotification("custom/htmlFiles", (urls: string[]) => {
+	translationProvider.onHtmlFilesFound(urls);
+});
+
+
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
