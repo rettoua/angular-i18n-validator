@@ -15,12 +15,15 @@ export class FileController {
 		});
 	}
 
-	public processHtmlFiles(projects: Project[], callback: (urls: string[]) => void): void {
+	public processHtmlFiles(projects: Project[], callback: (urls: Uri[]) => void): void {
 		let workspaceFolder = workspace.workspaceFolders[0].uri.path;
 		projects.forEach(project => {
 			const url = `${workspaceFolder}/${project.root}`;
 			workspace.findFiles(new RelativePattern(url, '**/*.html'), 'node_modules').then(res => {
-				const urls = res.map(r => r.fsPath);
+				const urls = res.map(r => <any>{
+					path: r.path,
+					fsPath: r.fsPath
+				});
 				callback(urls);
 			});
 		});

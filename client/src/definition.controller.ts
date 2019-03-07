@@ -12,10 +12,12 @@ export class DefinitionController {
 		if (!definitionResponse) {
 			return null;
 		}
-		const locations = definitionResponse.map(definition => <Location>{
-			uri: Uri.parse(definition.uri),
-			range: definition.range
-		});
+		const locations = definitionResponse
+			.filter(definition => !!definition)
+			.map(definition => <Location>{
+				uri: Uri.parse(definition.uri),
+				range: definition.range
+			});
 		return locations;
 	}
 }
@@ -31,10 +33,12 @@ export class ReferenceController {
 		if (!referencesResponse) {
 			return null;
 		}
-		const locations = referencesResponse.map(definition => <Location>{
-			uri: Uri.parse(definition.url),
-			range: definition.range
-		});
+		const locations = referencesResponse
+			.filter(reference => !!reference)
+			.map(reference => <Location>{
+				uri: Uri.file(reference.url),
+				range: reference.range
+			});
 		return locations;
 	}
 }

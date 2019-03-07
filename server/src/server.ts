@@ -54,7 +54,7 @@ connection.onRequest('rettoua.referencesRequest', (args: any) => {
 	return translationProvider.calculateReferences(args.url, args.position);
 });
 
-documents.onDidChangeContent(async (change) => {
+documents.onDidChangeContent(async (change) => {	
 	translationProvider.processFile(change.document);
 });
 
@@ -66,7 +66,7 @@ connection.onNotification("custom/translationsLoaded", () => {
 	translationProvider.onTranslationLoaded();
 });
 
-connection.onNotification("custom/htmlFiles", (urls: string[]) => {
+connection.onNotification("custom/htmlFiles", (urls: any[]) => {
 	translationProvider.onHtmlFilesFound(urls);
 });
 

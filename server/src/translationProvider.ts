@@ -8,6 +8,7 @@ import { Translation } from './models/Translation';
 import { HoverBuilder } from './hoverBuilder';
 import { HoverInfo } from './models/HoverInfo';
 import { readFileSync } from 'fs';
+import { uriToFilePath } from 'vscode-languageserver/lib/files';
 
 export class TranslationProvider {
 	private projects: Project[] = [];
@@ -26,11 +27,11 @@ export class TranslationProvider {
 		this.validateHtmlDocuments();
 	}
 
-	public onHtmlFilesFound(urls: string[]): void {
+	public onHtmlFilesFound(urls: { fsPath: string, path: string }[]): void {
 		urls.forEach(url => {
-			const buffer = readFileSync(url);
+			const buffer = readFileSync(url.fsPath);
 			const content = buffer.toString();
-			const doc = TextDocument.create(url, 'html', 1, content);
+			const doc = TextDocument.create(url.path, 'html', 1, content);
 			this.doValidate(doc, false);
 		});
 	}
@@ -46,7 +47,7 @@ export class TranslationProvider {
 	public calculateHover(url: string, position: number): any {
 		const doc = this.documents.get(url);
 		if (doc) {
-			const activeWords = <IdRange[]>this.words[url];
+			const activeWords = <IdRange[]>this.words[uriToFilePath(url)];
 			if (activeWords && activeWords.length > 0) {
 				const expectedWord = activeWords.find(w => {
 					return position >= w.start
@@ -80,7 +81,7 @@ export class TranslationProvider {
 	public calculateLocations(url: string, position: number): any {
 		const doc = this.documents.get(url);
 		if (doc) {
-			const activeWords = <IdRange[]>this.words[url];
+			const activeWords = <IdRange[]>this.words[uriToFilePath(url)];
 			if (activeWords && activeWords.length > 0) {
 				const expectedWord = activeWords.find(w => {
 					return position >= w.start
@@ -109,7 +110,7 @@ export class TranslationProvider {
 	public calculateReferences(url: string, position: number): any {
 		const doc = this.documents.get(url);
 		if (doc) {
-			const activeWords = <IdRange[]>this.words[url];
+			const activeWords = <IdRange[]>this.words[uriToFilePath(url)];
 			if (activeWords && activeWords.length > 0) {
 				const expectedWord = activeWords.find(w => {
 					return position >= w.start
@@ -173,7 +174,8 @@ export class TranslationProvider {
 		const trans = this.getSupportedTranslations(textDocument);
 		if (trans.length === 0) { return; }
 
-		this.words[textDocument.uri] = [];
+		const url = uriToFilePath(textDocument.uri);
+		this.words[url] = [];
 
 		let diagnostics: Diagnostic[] = [];
 		while (m = pattern.exec(text)) {
@@ -187,7 +189,7 @@ export class TranslationProvider {
 					end: textDocument.positionAt(m.index + m[0].length)
 				}
 			};
-			this.words[textDocument.uri].push(value);
+			this.words[url].push(value);
 
 			if (!withDiagnistics) { continue; }
 
@@ -214,8 +216,9 @@ export class TranslationProvider {
 			diagnostics.push(diagnostic);
 		}
 
-		// Send the computed diagnostics to VSCode.
-		this.connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+		if (withDiagnistics) {
+			this.connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+		}
 	}
 
 	private processTranslationFile(textDocument: TextDocument): void {
@@ -225,7 +228,7 @@ export class TranslationProvider {
 		if (!existTrans) {
 			const proj = this.getProjectForTranslation(textDocument.uri);
 			const trans = <Translation>{
-				uri: textDocument.uri,
+				uri: uriToFilePath(textDocument.uri),
 				units: units,
 				project: proj
 			};

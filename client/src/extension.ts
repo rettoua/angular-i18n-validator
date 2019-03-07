@@ -61,7 +61,7 @@ export async function activate(context: ExtensionContext) {
 			fileController.processTranslations(() => {
 				client.sendNotification('custom/translationsLoaded');
 
-				fileController.processHtmlFiles(projects, (urls: string[]) => {
+				fileController.processHtmlFiles(projects, (urls: any[]) => {
 					client.sendNotification('custom/htmlFiles', [urls]);
 				});
 			});
