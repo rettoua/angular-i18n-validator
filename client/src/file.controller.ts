@@ -3,32 +3,28 @@ import { ProjectController } from './project.controller';
 import { Project } from './project.model';
 
 export class FileController {
-	private projects: Project[] = [];
-	private workspaceFolder: Uri;
 
-	constructor() {
-		this.workspaceFolder = workspace.workspaceFolders[0].uri;
-	}
+	constructor() { }
 
 	public processAngularFile(callback: (projects: Project[]) => void): void {
 		workspace.findFiles('**/angular.json', 'node_modules', 1).then(res => {
 			if (res.length > 0) {
-				this.projects = ProjectController.getProjects(res[0]);
-				callback(this.projects);
-				this.processHtmlFiles();
+				const projects = ProjectController.getProjects(res[0]);
+				callback(projects);
 			}
 		});
 	}
 
-	public processHtmlFiles(): void {
-		const projectsForSearch = this.projects.map(project => project.root).filter((value, index, self) => self.indexOf(value) === index);
-		projectsForSearch.forEach(project => {
-			const pattern = new RelativePattern(`${this.workspaceFolder.path}/${project}`, '**/*.html');
-
-			workspace.findFiles(pattern, 'node_modules').then(res => {
-				if (res.length > 0) {
-					this.doProcessHtmlFile(res, 0);
-				}
+	public processHtmlFiles(projects: Project[], callback: (urls: Uri[]) => void): void {
+		let workspaceFolder = workspace.workspaceFolders[0].uri.path;
+		projects.forEach(project => {
+			const url = `${workspaceFolder}/${project.root}`;
+			workspace.findFiles(new RelativePattern(url, '**/*.html'), 'node_modules').then(res => {
+				const urls = res.map(r => <any>{
+					path: r.path,
+					fsPath: r.fsPath
+				});
+				callback(urls);
 			});
 		});
 	}
@@ -53,14 +49,6 @@ export class FileController {
 						callback();
 					}
 				});
-		});
-	}
-
-	private doProcessHtmlFile(files: Uri[], indexToProcess: number): void {
-		const uri = files[indexToProcess++];
-		workspace.openTextDocument(uri).then(_ => {
-			const index = indexToProcess;
-			setTimeout(() => this.doProcessHtmlFile(files, index), 10);
 		});
 	}
 }

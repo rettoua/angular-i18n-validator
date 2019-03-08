@@ -12,8 +12,9 @@
         "url": "https://github.com/rettoua/angular-i18n-validator"
     },
     "dependencies": {
-        "vscode-languageserver": "^4.1.3",
-        "matcher": "^1.1.1"
+        "matcher": "^1.1.1",
+        "normalize-path": "^3.0.0",
+        "vscode-languageserver": "^4.1.3"
     },
     "scripts": {}
 }

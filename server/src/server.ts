@@ -3,12 +3,10 @@ import {
 	TextDocuments,
 	ProposedFeatures,
 	InitializeParams,
-	DidChangeConfigurationNotification,
-	TextDocument
+	DidChangeConfigurationNotification
 } from 'vscode-languageserver';
 import { TranslationProvider } from './translationProvider';
 import { Project } from './project.model';
-
 
 let connection = createConnection(ProposedFeatures.all);
 
@@ -29,7 +27,7 @@ connection.onInitialize((params: InitializeParams) => {
 
 	return {
 		capabilities: {
-			textDocumentSync: documents.syncKind
+			textDocumentSync: documents.syncKind,
 		}
 	};
 });
@@ -56,7 +54,7 @@ connection.onRequest('rettoua.referencesRequest', (args: any) => {
 	return translationProvider.calculateReferences(args.url, args.position);
 });
 
-documents.onDidChangeContent(change => {
+documents.onDidChangeContent(async (change) => {	
 	translationProvider.processFile(change.document);
 });
 
@@ -67,6 +65,12 @@ connection.onNotification("custom/projects", (projects: Project[]) => {
 connection.onNotification("custom/translationsLoaded", () => {
 	translationProvider.onTranslationLoaded();
 });
+
+connection.onNotification("custom/htmlFiles", (urls: any[]) => {
+	translationProvider.onHtmlFilesFound(urls);
+});
+
+
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events

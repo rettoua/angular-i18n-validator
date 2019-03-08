@@ -52,14 +52,21 @@ export async function activate(context: ExtensionContext) {
 	const hoverController = new HoverController(client);
 	const definitionController = new DefinitionController(client);
 	const referencesController = new ReferenceController(client);
+
 	client.onReady().then(_ => {
+
 		fileController.processAngularFile(projects => {
 			client.sendNotification('custom/projects', [projects]);
+
+			fileController.processTranslations(() => {
+				client.sendNotification('custom/translationsLoaded');
+
+				fileController.processHtmlFiles(projects, (urls: any[]) => {
+					client.sendNotification('custom/htmlFiles', [urls]);
+				});
+			});
 		});
 
-		fileController.processTranslations(() => {
-			client.sendNotification('custom/translationsLoaded');
-		});
 	});
 
 	languages.registerHoverProvider({ scheme: 'file', language: 'html' }, {
@@ -75,7 +82,7 @@ export async function activate(context: ExtensionContext) {
 	});
 
 	context.subscriptions.push(commands.registerCommand('rettoua.goto_file', (args) => {
-		window.showTextDocument(Uri.parse(args.uri), {
+		window.showTextDocument(Uri.file(args.uri), {
 			selection: args.range
 		});
 	}, this));
