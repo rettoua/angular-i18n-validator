@@ -15,7 +15,7 @@ export class DefinitionController {
 		const locations = definitionResponse
 			.filter(definition => !!definition)
 			.map(definition => <Location>{
-				uri: Uri.parse(definition.uri),
+				uri: Uri.file(definition.uri),
 				range: definition.range
 			});
 		return locations;

@@ -2,6 +2,7 @@ import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments
 import { Project } from './project.model';
 
 import matcher = require('matcher');
+import normalize = require('normalize-path');
 import { TranslationParser } from './translationParser';
 import { IdRange } from './models/IdRange';
 import { Translation } from './models/Translation';
@@ -19,6 +20,7 @@ export class TranslationProvider {
 
 	public assignProjects(projects: Project[]): any {
 		this.projects = projects;
+
 		this.assignProjectToTranslation();
 	}
 
@@ -32,29 +34,30 @@ export class TranslationProvider {
 			const buffer = readFileSync(url.fsPath);
 			const content = buffer.toString();
 			const doc = TextDocument.create(url.path, 'html', 1, content);
-			this.doValidate(doc, false);
+			const wrap = this.getDocument(doc);
+			this.doValidate(wrap, false);
 		});
 	}
 
 	public processFile(textDocument: TextDocument): void {
 		if (this.isTranslationFile(textDocument)) {
-			this.processTranslationFile(textDocument);
+			this.processTranslationFile(this.getDocument(textDocument));
 		} else if (this.isHtmlFile(textDocument)) {
 			this.processHtmlFile(textDocument);
 		}
 	}
 
 	public calculateHover(url: string, position: number): any {
-		const doc = this.documents.get(url);
+		const doc = this.getDocument(url);
 		if (doc) {
-			const activeWords = <IdRange[]>this.words[uriToFilePath(url)];
+			const activeWords = <IdRange[]>this.words[doc.url];
 			if (activeWords && activeWords.length > 0) {
 				const expectedWord = activeWords.find(w => {
 					return position >= w.start
 						&& position <= w.end;
 				});
 				if (expectedWord) {
-					const trans = this.getSupportedTranslations(doc);
+					const trans = this.getSupportedTranslations(doc.url);
 					if (trans.length > 0) {
 						const values = trans.map(t => {
 							const findTrans = t.units.find(u => u.id === expectedWord.id);
@@ -79,16 +82,16 @@ export class TranslationProvider {
 	}
 
 	public calculateLocations(url: string, position: number): any {
-		const doc = this.documents.get(url);
+		const doc = this.getDocument(url);
 		if (doc) {
-			const activeWords = <IdRange[]>this.words[uriToFilePath(url)];
+			const activeWords = <IdRange[]>this.words[doc.url];
 			if (activeWords && activeWords.length > 0) {
 				const expectedWord = activeWords.find(w => {
 					return position >= w.start
 						&& position <= w.end;
 				});
 				if (expectedWord) {
-					const trans = this.getSupportedTranslations(doc);
+					const trans = this.getSupportedTranslations(doc.url);
 					if (trans.length > 0) {
 						const locations = trans.map(t => {
 							const findTrans = t.units.find(u => u.id === expectedWord.id);
@@ -108,9 +111,9 @@ export class TranslationProvider {
 	}
 
 	public calculateReferences(url: string, position: number): any {
-		const doc = this.documents.get(url);
+		const doc = this.getDocument(url);
 		if (doc) {
-			const activeWords = <IdRange[]>this.words[uriToFilePath(url)];
+			const activeWords = <IdRange[]>this.words[doc.url];
 			if (activeWords && activeWords.length > 0) {
 				const expectedWord = activeWords.find(w => {
 					return position >= w.start
@@ -145,7 +148,8 @@ export class TranslationProvider {
 		if (!this.projects || Object.keys(this.translations).length === 0) {
 			return;
 		}
-		this.doValidate(textDocument);
+		const wrap = this.getDocument(textDocument);
+		this.doValidate(wrap);
 	}
 
 	private validateHtmlDocuments(): void {
@@ -165,17 +169,16 @@ export class TranslationProvider {
 		return textDocument.languageId === 'html';
 	}
 
-	private doValidate(textDocument: TextDocument, withDiagnistics: boolean = true): void {
+	private doValidate(wrap: DocumentWrapper, withDiagnistics: boolean = true): void {
 
-		let text = textDocument.getText();
+		let text = wrap.document.getText();
 		let pattern = /i18n.+["|']@@(.+?)["|']/g;
 		let m: RegExpExecArray | null;
 
-		const trans = this.getSupportedTranslations(textDocument);
+		const trans = this.getSupportedTranslations(wrap.url);
 		if (trans.length === 0) { return; }
 
-		const url = uriToFilePath(textDocument.uri);
-		this.words[url] = [];
+		this.words[wrap.url] = [];
 
 		let diagnostics: Diagnostic[] = [];
 		while (m = pattern.exec(text)) {
@@ -185,11 +188,11 @@ export class TranslationProvider {
 				end: m.index + m[0].length,
 				id: m[1],
 				range: {
-					start: textDocument.positionAt(m.index),
-					end: textDocument.positionAt(m.index + m[0].length)
+					start: wrap.document.positionAt(m.index),
+					end: wrap.document.positionAt(m.index + m[0].length)
 				}
 			};
-			this.words[url].push(value);
+			this.words[wrap.url].push(value);
 
 			if (!withDiagnistics) { continue; }
 
@@ -207,8 +210,8 @@ export class TranslationProvider {
 			let diagnostic: Diagnostic = {
 				severity: DiagnosticSeverity.Warning,
 				range: {
-					start: textDocument.positionAt(m.index),
-					end: textDocument.positionAt(m.index + m[0].length)
+					start: wrap.document.positionAt(m.index),
+					end: wrap.document.positionAt(m.index + m[0].length)
 				},
 				message: `Missed translation in '${missed}' project(-s)`
 			};
@@ -217,18 +220,18 @@ export class TranslationProvider {
 		}
 
 		if (withDiagnistics) {
-			this.connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+			this.connection.sendDiagnostics({ uri: wrap.url, diagnostics });
 		}
 	}
 
-	private processTranslationFile(textDocument: TextDocument): void {
-		const existTrans = this.translations.find(t => t.uri === textDocument.uri);
+	private processTranslationFile(document: DocumentWrapper): void {
+		const existTrans = this.translations.find(t => t.uri === document.url);
 		const parser = new TranslationParser();
-		const units = parser.getTransUnits(textDocument);
+		const units = parser.getTransUnits(document);
 		if (!existTrans) {
-			const proj = this.getProjectForTranslation(textDocument.uri);
+			const proj = this.getProjectForTranslation(document.url);
 			const trans = <Translation>{
-				uri: uriToFilePath(textDocument.uri),
+				uri: document.url,
 				units: units,
 				project: proj
 			};
@@ -262,8 +265,8 @@ export class TranslationProvider {
 		});
 	}
 
-	private getSupportedTranslations(textDocument: TextDocument): Translation[] {
-		const projects = this.projects.filter(p => this.isFileBelongsProject(p, textDocument.uri));
+	private getSupportedTranslations(url: string): Translation[] {
+		const projects = this.projects.filter(p => this.isFileBelongsProject(p, url));
 		let trans = [];
 		if (projects.length === 0) {
 			return trans;
@@ -292,5 +295,30 @@ export class TranslationProvider {
 		});
 		return !fileShouldBeExcluded;
 	}
+
+	private getDocument(doc: TextDocument | string): DocumentWrapper {
+		let document: TextDocument;
+		if (typeof doc === 'string') {
+			document = this.documents.get(doc);
+		} else {
+			document = doc;
+		}
+		try {
+			if (document) {
+				return {
+					document: document,
+					url: normalize(uriToFilePath(document.uri) || document.uri)
+				};
+			}
+		}
+		catch (ex) {
+			debugger;
+		}
+		return null;
+	}
 }
 
+export interface DocumentWrapper {
+	document: TextDocument;
+	url: string;
+}

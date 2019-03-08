@@ -1,5 +1,6 @@
 import { TextDocument, Range } from 'vscode-languageserver';
 import { TransUnit } from "./models/TransUnit";
+import { DocumentWrapper } from './translationProvider';
 
 export class TranslationParser {
 	private splitUnitsRegex = /<trans-unit(.|\s|\n)*?<\/trans-unit>/gm;
@@ -7,7 +8,7 @@ export class TranslationParser {
 	private sourceRegex = /<source>((.|\s|\n)*?)<\/source>/m;
 	private targetRegex = /<target>((.|\s|\n)*?)<\/target>/m;
 
-	public getTransUnits(document: TextDocument): TransUnit[] {
+	public getTransUnits(document: DocumentWrapper): TransUnit[] {
 		try {
 			let unitBlocks = this.getTransUnitsBlocks(document);
 			let units = this.processUnitBlocks(document, unitBlocks);
@@ -19,17 +20,17 @@ export class TranslationParser {
 		return [];
 	}
 
-	private getTransUnitsBlocks(document: TextDocument): RegExpExecArray[] {
+	private getTransUnitsBlocks(wrap: DocumentWrapper): RegExpExecArray[] {
 		let units = [];
 		let m: RegExpExecArray | null;
-		const text = document.getText();
+		const text = wrap.document.getText();
 		while (m = this.splitUnitsRegex.exec(text)) {
 			units.push(m);
 		}
 		return units;
 	}
 
-	private processUnitBlocks(document: TextDocument, blocks: RegExpExecArray[]): TransUnit[] {
+	private processUnitBlocks(wrap: DocumentWrapper, blocks: RegExpExecArray[]): TransUnit[] {
 		let units: TransUnit[] = [];
 		blocks.forEach(value => {
 			const text = value[0];
@@ -43,8 +44,8 @@ export class TranslationParser {
 			if (target) {
 				const diff = (target[0].length - target[1].length) / 2;
 				range = <Range>{
-					start: document.positionAt(value.index + target.index + diff),
-					end: document.positionAt(value.index + target.index + target[1].length + diff)
+					start: wrap.document.positionAt(value.index + target.index + diff),
+					end: wrap.document.positionAt(value.index + target.index + target[1].length + diff)
 				};
 			}
 			units.push(<TransUnit>{
