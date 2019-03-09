@@ -8,6 +8,7 @@ import {
 } from 'vscode-languageserver';
 import { TranslationProvider } from './translationProvider';
 import { Project } from './project.model';
+import { GenerateTranslation, GenerateTranslationCommand } from './models/IdRange';
 
 let connection = createConnection(ProposedFeatures.all);
 
@@ -59,6 +60,10 @@ connection.onRequest('rettoua.referencesRequest', (args: any) => {
 	return translationProvider.calculateReferences(args.url, args.position);
 });
 
+connection.onRequest('rettoua.codeActionsRequest', (args: any) => {
+	return translationProvider.calculateCodeActions(args.url, args.position);
+});
+
 documents.onDidChangeContent(async (change) => {
 	translationProvider.processFile(change.document);
 });
@@ -73,6 +78,10 @@ connection.onNotification("custom/translationsLoaded", () => {
 
 connection.onNotification("custom/htmlFiles", (urls: any[]) => {
 	translationProvider.onHtmlFilesFound(urls);
+});
+
+connection.onNotification("custom/generate_translations", (commands: GenerateTranslationCommand[]) => {
+	translationProvider.onGenerateTranslation(commands);
 });
 
 // Make the text document manager listen on the connection

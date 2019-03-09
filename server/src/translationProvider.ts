@@ -1,15 +1,16 @@
-import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments } from 'vscode-languageserver';
+import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Range, WorkspaceEdit } from 'vscode-languageserver';
 import { Project } from './project.model';
 
 import matcher = require('matcher');
 import normalize = require('normalize-path');
 import { TranslationParser } from './translationParser';
-import { IdRange } from './models/IdRange';
+import { IdRange, GenerateTranslation, GenerateTranslationCommand } from './models/IdRange';
 import { Translation } from './models/Translation';
 import { HoverBuilder } from './hoverBuilder';
 import { HoverInfo } from './models/HoverInfo';
 import { readFileSync } from 'fs';
 import { uriToFilePath } from 'vscode-languageserver/lib/files';
+import { TransUnitBuilder } from './TransUnitBuilder';
 
 export class TranslationProvider {
 	private projects: Project[] = [];
@@ -20,7 +21,6 @@ export class TranslationProvider {
 
 	public assignProjects(projects: Project[]): any {
 		this.projects = projects;
-
 		this.assignProjectToTranslation();
 	}
 
@@ -36,6 +36,35 @@ export class TranslationProvider {
 			const doc = TextDocument.create(url.path, 'html', 1, content);
 			const wrap = this.getDocument(doc);
 			this.doValidate(wrap, false);
+		});
+	}
+
+	public onGenerateTranslation(args: GenerateTranslationCommand[]): void {
+		args.forEach(command => {
+			const trans = this.translations.find(t => t.uri === command.uri);
+			if (trans) {
+				const documentUri = trans.documentUri;
+				let workspaceEdit = {
+					documentChanges:
+						[{
+							uri: documentUri,
+							textDocument: {
+								version: null,
+								uri: documentUri
+							},
+							edits: [
+								{
+									newText: TransUnitBuilder.createTransUnit(command.word, command.source),
+									range: {
+										start: trans.insertPosition,
+										end: trans.insertPosition
+									}
+								}
+							]
+						}]
+				};
+				this.connection.workspace.applyEdit(workspaceEdit);
+			}
 		});
 	}
 
@@ -144,6 +173,55 @@ export class TranslationProvider {
 		return null;
 	}
 
+	public calculateCodeActions(url: string, position: number): any {
+		const doc = this.getDocument(url);
+		if (doc) {
+			const activeWords = <IdRange[]>this.words[doc.url];
+			if (activeWords && activeWords.length > 0) {
+				const expectedWord = activeWords.find(w => {
+					return position >= w.start
+						&& position <= w.end;
+				});
+				if (expectedWord) {
+					const trans = this.getSupportedTranslations(doc.url);
+					if (trans.length > 0) {
+						let source: string = '';
+						let values = trans.map(t => {
+							const findTrans = t.units.find(u => u.id === expectedWord.id);
+							if (findTrans && findTrans.source) {
+								source = findTrans.source;
+							}
+							if (!findTrans) {
+								return <GenerateTranslation>{
+									title: `Generate translation unit for ${t.project.label}`,
+									commandArgs: [<GenerateTranslationCommand>{
+										word: expectedWord.id,
+										uri: t.uri
+									}]
+								};
+							}
+						});
+						values = values.filter(v => !!v).map(value => {
+							value.commandArgs[0].source = source;
+							return value;
+						});
+						let commands = [];
+						if (values.length > 1) {
+							const generateAllCommand = <GenerateTranslation>{
+								title: 'Generate translations for all...',
+								commandArgs: [...values.map(v => v.commandArgs[0])]
+							};
+							commands.push(generateAllCommand);
+						}
+						commands = commands.concat(...values);
+						return commands;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
 	private processHtmlFile(textDocument: TextDocument): void {
 		if (!this.projects || Object.keys(this.translations).length === 0) {
 			return;
@@ -224,21 +302,26 @@ export class TranslationProvider {
 		}
 	}
 
-	private processTranslationFile(document: DocumentWrapper): void {
-		const existTrans = this.translations.find(t => t.uri === document.url);
+	private processTranslationFile(wrap: DocumentWrapper): void {
+		const existTrans = this.translations.find(t => t.uri === wrap.url);
 		const parser = new TranslationParser();
-		const units = parser.getTransUnits(document);
+		const units = parser.getTransUnits(wrap);
+		const indexOfClosingBodyTags = wrap.document.getText().indexOf('</body>');
+		const insertPosition = wrap.document.positionAt(indexOfClosingBodyTags);
 		if (!existTrans) {
-			const proj = this.getProjectForTranslation(document.url);
+			const proj = this.getProjectForTranslation(wrap.url);
 			const trans = <Translation>{
-				uri: document.url,
+				uri: wrap.url,
+				documentUri: wrap.document.uri,
 				units: units,
-				project: proj
+				project: proj,
+				insertPosition: insertPosition
 			};
 			this.translations.push(trans);
 		}
 		else {
 			existTrans.units = units;
+			existTrans.insertPosition = insertPosition;
 		}
 		this.validateHtmlDocuments();
 	}

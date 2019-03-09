@@ -5,3 +5,14 @@ export interface IdRange {
 	id: string;
 	range: Range;
 }
+
+export interface GenerateTranslation {
+	title: string;
+	commandArgs: GenerateTranslationCommand[];
+}
+
+export interface GenerateTranslationCommand {
+	word: string;
+	uri: string;
+	source?: string;
+}
