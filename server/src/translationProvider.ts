@@ -220,7 +220,7 @@ export class TranslationProvider {
 		}
 
 		if (withDiagnistics) {
-			this.connection.sendDiagnostics({ uri: wrap.url, diagnostics });
+			this.connection.sendDiagnostics({ uri: wrap.document.uri, diagnostics });
 		}
 	}
 
