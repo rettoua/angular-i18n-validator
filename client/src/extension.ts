@@ -1,15 +1,18 @@
 import * as path from 'path';
-import { workspace, ExtensionContext, commands, languages, window, Uri } from 'vscode';
+import { workspace, ExtensionContext, commands, languages, window, Uri, WorkspaceEdit } from 'vscode';
 
 import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
-	TransportKind
+	TransportKind,
+	TextDocument
 } from 'vscode-languageclient';
 import { FileController } from './file.controller';
 import { HoverController } from './hover.controller';
-import { DefinitionController, ReferenceController } from "./definition.controller";
+import { DefinitionController } from "./definition.controller";
+import { ReferenceController } from "./reference.controller";
+import RettouaCommands, { CodeActionsController } from './codeactions.controller';
 
 let client: LanguageClient;
 
@@ -52,6 +55,7 @@ export async function activate(context: ExtensionContext) {
 	const hoverController = new HoverController(client);
 	const definitionController = new DefinitionController(client);
 	const referencesController = new ReferenceController(client);
+	const codeActionsController = new CodeActionsController(client);
 
 	client.onReady().then(_ => {
 
@@ -81,12 +85,25 @@ export async function activate(context: ExtensionContext) {
 		provideReferences: referencesController.getReferences.bind(referencesController)
 	});
 
-	context.subscriptions.push(commands.registerCommand('rettoua.goto_file', (args) => {
+	languages.registerCodeActionsProvider({ scheme: 'file', language: 'html' }, {
+		provideCodeActions: codeActionsController.getActions.bind(codeActionsController)
+	});
+
+	// languages.
+
+	// languages.registerRenameProvider({ scheme: 'file', language: 'html' }, {
+	// 	provideRenameEdits: ()
+	// });
+
+	context.subscriptions.push(commands.registerCommand(RettouaCommands.GO_TO_FILE, (args) => {
 		window.showTextDocument(Uri.file(args.uri), {
 			selection: args.range
 		});
 	}, this));
 
+	context.subscriptions.push(commands.registerCommand(RettouaCommands.GENERATE_TRANSLATION, (args) => {
+		client.sendNotification('custom/generate_translations', args);
+	}, this));
 }
 
 export function deactivate(): Thenable<void> | undefined {
