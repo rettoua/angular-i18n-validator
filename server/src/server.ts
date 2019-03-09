@@ -64,6 +64,14 @@ connection.onRequest('rettoua.codeActionsRequest', (args: any) => {
 	return translationProvider.calculateCodeActions(args.url, args.position);
 });
 
+connection.onRequest('rettoua.isRenameAllowed', (args: any) => {
+	return translationProvider.isRenameAllowed(args.url, args.position);
+});
+
+connection.onRequest('rettoua.renameRequest', (args: any) => {
+	return translationProvider.calculateRenaming(args.url, args.position);
+});
+
 documents.onDidChangeContent(async (change) => {
 	translationProvider.processFile(change.document);
 });

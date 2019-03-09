@@ -50,6 +50,10 @@ export class TranslationParser {
 			}
 			units.push(<TransUnit>{
 				id: id[1],
+				idRange: {
+					start: wrap.document.positionAt(value.index + id.index + id[0].indexOf(id[1])),
+					end: wrap.document.positionAt(value.index + id.index + id[0].indexOf(id[1]) + id[1].length)
+				},
 				source: source && source[1],
 				target: (target && target[1]) || '`<no translation>`',
 				sourceIndex: source && source.index,

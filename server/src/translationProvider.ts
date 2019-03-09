@@ -145,7 +145,7 @@ export class TranslationProvider {
 			const activeWords = <IdRange[]>this.words[doc.url];
 			if (activeWords && activeWords.length > 0) {
 				const expectedWord = activeWords.find(w => {
-					return position >= w.start
+					return position >= w.idStart
 						&& position <= w.end;
 				});
 				if (expectedWord) {
@@ -164,7 +164,7 @@ export class TranslationProvider {
 					if (refs.length > 0) {
 						return refs.map(ref => <any>{
 							url: ref.url,
-							range: ref.range
+							range: ref.idRange
 						});
 					}
 				}
@@ -222,6 +222,60 @@ export class TranslationProvider {
 		return null;
 	}
 
+	public isRenameAllowed(url: string, position: number): boolean {
+		const doc = this.getDocument(url);
+		if (doc) {
+			const activeWords = <IdRange[]>this.words[doc.url];
+			if (activeWords && activeWords.length > 0) {
+				const expectedWord = activeWords.find(w => {
+					return position >= w.idStart
+						&& position <= w.end;
+				});
+				return !!expectedWord;
+			}
+		}
+		return false;
+	}
+
+	public calculateRenaming(url: string, position: number): any[] {
+		const doc = this.getDocument(url);
+		if (doc) {
+			const activeWords = <IdRange[]>this.words[doc.url];
+			if (activeWords && activeWords.length > 0) {
+				const expectedWord = activeWords.find(w => {
+					return position >= w.idStart
+						&& position <= w.end;
+				});
+				if (expectedWord) {
+					const toRename = [];
+					Object.keys(this.words).forEach(url => {
+						const word: IdRange = this.words[url].find(w => {
+							return w.id === expectedWord.id;
+						});
+						if (word) {
+							toRename.push({
+								url: url,
+								range: word.idRange
+							});
+						}
+					});
+					this.translations.forEach(trans => {
+						trans.units.forEach(unit => {
+							if (unit.id === expectedWord.id) {
+								toRename.push({
+									url: trans.uri,
+									range: unit.idRange
+								});
+							}
+						});
+					});
+					return toRename;
+				}
+			}
+		}
+		return null;
+	}
+
 	private processHtmlFile(textDocument: TextDocument): void {
 		if (!this.projects || Object.keys(this.translations).length === 0) {
 			return;
@@ -264,10 +318,15 @@ export class TranslationProvider {
 			const value = <IdRange>{
 				start: m.index,
 				end: m.index + m[0].length,
-				id: m[1],
+				id: group,
+				idStart: m.index + m[0].indexOf(group),
 				range: {
 					start: wrap.document.positionAt(m.index),
 					end: wrap.document.positionAt(m.index + m[0].length)
+				},
+				idRange: {
+					start: wrap.document.positionAt(m.index + m[0].indexOf(group)),
+					end: wrap.document.positionAt(m.index + m[0].length - 1)
 				}
 			};
 			this.words[wrap.url].push(value);
@@ -388,9 +447,13 @@ export class TranslationProvider {
 		}
 		try {
 			if (document) {
+				let url: string = normalize(uriToFilePath(document.uri) || document.uri);
+				if (url.startsWith('/')) {
+					url = url.slice(1, url.length);
+				}
 				return {
 					document: document,
-					url: normalize(uriToFilePath(document.uri) || document.uri)
+					url: url
 				};
 			}
 		}
