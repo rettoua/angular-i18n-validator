@@ -3,7 +3,8 @@ import {
 	TextDocuments,
 	ProposedFeatures,
 	InitializeParams,
-	DidChangeConfigurationNotification
+	DidChangeConfigurationNotification,
+	DidChangeWorkspaceFoldersNotification
 } from 'vscode-languageserver';
 import { TranslationProvider } from './translationProvider';
 import { Project } from './project.model';
@@ -12,7 +13,7 @@ let connection = createConnection(ProposedFeatures.all);
 
 let documents: TextDocuments = new TextDocuments();
 
-const translationProvider = new TranslationProvider(connection, documents);
+let translationProvider = new TranslationProvider(connection, documents);
 
 let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
@@ -39,6 +40,10 @@ connection.onInitialized(async () => {
 			DidChangeConfigurationNotification.type,
 			undefined
 		);
+		connection.client.register(
+			DidChangeWorkspaceFoldersNotification.type,
+			undefined
+		);
 	}
 });
 
@@ -54,7 +59,7 @@ connection.onRequest('rettoua.referencesRequest', (args: any) => {
 	return translationProvider.calculateReferences(args.url, args.position);
 });
 
-documents.onDidChangeContent(async (change) => {	
+documents.onDidChangeContent(async (change) => {
 	translationProvider.processFile(change.document);
 });
 
@@ -69,8 +74,6 @@ connection.onNotification("custom/translationsLoaded", () => {
 connection.onNotification("custom/htmlFiles", (urls: any[]) => {
 	translationProvider.onHtmlFilesFound(urls);
 });
-
-
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
