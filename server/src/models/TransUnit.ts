@@ -7,4 +7,5 @@ export interface TransUnit {
 	sourceIndex: number;
 	targetIndex: number;
 	targetRange: Range;
+	idRange: Range;
 }

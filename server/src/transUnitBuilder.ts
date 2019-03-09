@@ -6,7 +6,6 @@ export class TransUnitBuilder {
 	public build(id: string, source?: string): string {
 		return `
 		<trans-unit id="${id}" datatype="html"><source>${source}</source><target></target></trans-unit>
-
 `;
 	}
 }

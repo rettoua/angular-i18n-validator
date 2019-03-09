@@ -13,6 +13,7 @@ import { HoverController } from './hover.controller';
 import { DefinitionController } from "./definition.controller";
 import { ReferenceController } from "./reference.controller";
 import RettouaCommands, { CodeActionsController } from './codeactions.controller';
+import { RenameController } from './rename.controller';
 
 let client: LanguageClient;
 
@@ -56,6 +57,7 @@ export async function activate(context: ExtensionContext) {
 	const definitionController = new DefinitionController(client);
 	const referencesController = new ReferenceController(client);
 	const codeActionsController = new CodeActionsController(client);
+	const renameController = new RenameController(client);
 
 	client.onReady().then(_ => {
 
@@ -89,9 +91,10 @@ export async function activate(context: ExtensionContext) {
 		provideCodeActions: codeActionsController.getActions.bind(codeActionsController)
 	});
 
-	// languages.registerRenameProvider({ scheme: 'file', language: 'html' }, {
-	// 	provideRenameEdits: ()
-	// });
+	languages.registerRenameProvider({ scheme: 'file', language: 'html' }, {
+		provideRenameEdits: renameController.rename.bind(renameController),
+		prepareRename: renameController.prepareRename.bind(renameController)
+	});
 
 	context.subscriptions.push(commands.registerCommand(RettouaCommands.GO_TO_FILE, (args) => {
 		window.showTextDocument(Uri.file(args.uri), {
