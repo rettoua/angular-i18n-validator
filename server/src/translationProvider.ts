@@ -39,32 +39,33 @@ export class TranslationProvider {
 		});
 	}
 
-	public onGenerateTranslation(args: GenerateTranslationCommand): void {
-
-		const trans = this.translations.find(t => t.uri === args.uri);
-		if (trans) {
-			const documentUri = trans.documentUri;
-			let workspaceEdit = {
-				documentChanges:
-					[{
-						uri: documentUri,
-						textDocument: {
-							version: null,
-							uri: documentUri
-						},
-						edits: [
-							{
-								newText: TransUnitBuilder.createTransUnit(args.word, args.source),
-								range: {
-									start: trans.insertPosition,
-									end: trans.insertPosition
+	public onGenerateTranslation(args: GenerateTranslationCommand[]): void {
+		args.forEach(command => {
+			const trans = this.translations.find(t => t.uri === command.uri);
+			if (trans) {
+				const documentUri = trans.documentUri;
+				let workspaceEdit = {
+					documentChanges:
+						[{
+							uri: documentUri,
+							textDocument: {
+								version: null,
+								uri: documentUri
+							},
+							edits: [
+								{
+									newText: TransUnitBuilder.createTransUnit(command.word, command.source),
+									range: {
+										start: trans.insertPosition,
+										end: trans.insertPosition
+									}
 								}
-							}
-						]
-					}]
-			};
-			this.connection.workspace.applyEdit(workspaceEdit);
-		}
+							]
+						}]
+				};
+				this.connection.workspace.applyEdit(workspaceEdit);
+			}
+		});
 	}
 
 	public processFile(textDocument: TextDocument): void {
@@ -193,18 +194,27 @@ export class TranslationProvider {
 							if (!findTrans) {
 								return <GenerateTranslation>{
 									title: `Generate translation unit for ${t.project.label}`,
-									commandArgs: {
+									commandArgs: [<GenerateTranslationCommand>{
 										word: expectedWord.id,
 										uri: t.uri
-									}
+									}]
 								};
 							}
 						});
 						values = values.filter(v => !!v).map(value => {
-							value.commandArgs.source = source;
+							value.commandArgs[0].source = source;
 							return value;
 						});
-						return values;
+						let commands = [];
+						if (values.length > 1) {
+							const generateAllCommand = <GenerateTranslation>{
+								title: 'Generate translations for all...',
+								commandArgs: [...values.map(v => v.commandArgs[0])]
+							};
+							commands.push(generateAllCommand);
+						}
+						commands = commands.concat(...values);
+						return commands;
 					}
 				}
 			}

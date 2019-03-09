@@ -89,8 +89,6 @@ export async function activate(context: ExtensionContext) {
 		provideCodeActions: codeActionsController.getActions.bind(codeActionsController)
 	});
 
-	// languages.
-
 	// languages.registerRenameProvider({ scheme: 'file', language: 'html' }, {
 	// 	provideRenameEdits: ()
 	// });
@@ -102,7 +100,7 @@ export async function activate(context: ExtensionContext) {
 	}, this));
 
 	context.subscriptions.push(commands.registerCommand(RettouaCommands.GENERATE_TRANSLATION, (args) => {
-		client.sendNotification('custom/generate_translations', args);
+		client.sendNotification('custom/generate_translations', [args]);
 	}, this));
 }
 

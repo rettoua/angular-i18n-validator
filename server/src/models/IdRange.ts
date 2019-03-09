@@ -8,7 +8,7 @@ export interface IdRange {
 
 export interface GenerateTranslation {
 	title: string;
-	commandArgs: GenerateTranslationCommand;
+	commandArgs: GenerateTranslationCommand[];
 }
 
 export interface GenerateTranslationCommand {

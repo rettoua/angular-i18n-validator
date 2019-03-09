@@ -80,8 +80,8 @@ connection.onNotification("custom/htmlFiles", (urls: any[]) => {
 	translationProvider.onHtmlFilesFound(urls);
 });
 
-connection.onNotification("custom/generate_translations", (args: GenerateTranslationCommand) => {
-	translationProvider.onGenerateTranslation(args);
+connection.onNotification("custom/generate_translations", (commands: GenerateTranslationCommand[]) => {
+	translationProvider.onGenerateTranslation(commands);
 });
 
 // Make the text document manager listen on the connection
