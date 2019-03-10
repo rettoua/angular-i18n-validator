@@ -14,6 +14,7 @@ import { DefinitionController } from "./definition.controller";
 import { ReferenceController } from "./reference.controller";
 import RettouaCommands, { CodeActionsController } from './codeactions.controller';
 import { RenameController } from './rename.controller';
+import { CompletionItemController } from './completionItem.controller';
 
 let client: LanguageClient;
 
@@ -58,6 +59,7 @@ export async function activate(context: ExtensionContext) {
 	const referencesController = new ReferenceController(client);
 	const codeActionsController = new CodeActionsController(client);
 	const renameController = new RenameController(client);
+	const completionItemController = new CompletionItemController(client);
 
 	client.onReady().then(_ => {
 
@@ -94,6 +96,10 @@ export async function activate(context: ExtensionContext) {
 	languages.registerRenameProvider({ scheme: 'file', language: 'html' }, {
 		provideRenameEdits: renameController.rename.bind(renameController),
 		prepareRename: renameController.prepareRename.bind(renameController)
+	});
+
+	languages.registerCompletionItemProvider({ scheme: 'file', language: 'html' }, {
+		provideCompletionItems: completionItemController.getItems.bind(completionItemController)
 	});
 
 	context.subscriptions.push(commands.registerCommand(RettouaCommands.GO_TO_FILE, (args) => {
