@@ -4,6 +4,17 @@
 
 Extension for validating i18n for Angular 6+ projects with adding peace of functionality for seeing and navigating to translations.. Supports multiple projects specified in `Angular.json` and takes into account current context with showing and navigating only to relevant translations. 
 
+Supported features:
+- Validating `html` templates against translation files
+- Hover Popup with showing available translation
+- `Go To` particular translation file from the Hover Popup
+- `Go To Definition` from html template to relevant translation file
+- `Find All References` for showing translation unit usages across `html` templates
+- `IntelliSense`
+- `Rename` applys changes for both `html` template and translation file
+- `Generate translation unit(-s)` for a single or bulk translation units generating
+
+
 ### Checks translations existence and showing available ones in the hover
 
 ![Document validation](/images/validation.gif)
@@ -20,4 +31,16 @@ Extension for validating i18n for Angular 6+ projects with adding peace of funct
 ### Find all references
 
 ![Navigate to translation](/images/find_references.gif)
+
+### IntelliSense
+
+<img src="./images/intellisense.gif" width="400">
+
+### Rename
+
+<img src="./images/rename.gif" width="600">
+
+### Generate translation unit(-s)
+
+<img src="./images/translation_units_generation.gif" width="600">
 
