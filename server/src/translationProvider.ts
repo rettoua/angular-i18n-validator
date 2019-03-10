@@ -276,6 +276,45 @@ export class TranslationProvider {
 		return null;
 	}
 
+	public getCompletionItems(url: string, position: number): any[] {
+		const doc = this.getDocument(url);
+		if (doc) {
+			const activeWords = <IdRange[]>this.words[doc.url];
+			if (activeWords && activeWords.length > 0) {
+				const expectedWord = activeWords.find(w => {
+					return position >= w.idStart
+						&& position <= w.end;
+				});
+				if (expectedWord) {
+					const translations = this.getSupportedTranslations(doc.url);
+					if (translations.length === 0) {
+						return [];
+					}
+					let completionItems: string[] = [];
+					translations.forEach(trans => {
+						const words: string[] = trans.units
+							.filter(unit => unit.id.toLocaleLowerCase().indexOf(expectedWord.id.toLocaleLowerCase()) >= 0)
+							.map(unit => unit.id);
+						completionItems = completionItems.concat(words);
+					});
+					const alphabeticalSort = (a: string, b: string): number => {
+						if (a > b) { return 1; }
+						if (a < b) { return -1; }
+						return 0;
+					};
+					const uniqueness = (value, index, self): boolean => {
+						return self.indexOf(value) === index;
+					};
+					completionItems = completionItems
+						.filter(uniqueness)
+						.sort(alphabeticalSort);
+					return completionItems;
+				}
+			}
+		}
+		return null;
+	}
+
 	private processHtmlFile(textDocument: TextDocument): void {
 		if (!this.projects || Object.keys(this.translations).length === 0) {
 			return;
