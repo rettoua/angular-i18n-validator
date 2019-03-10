@@ -7,11 +7,14 @@ export class RenameController {
 	constructor(private client: LanguageClient) { }
 
 	public async rename(doc: TextDocument, position: Position, newName: string, token: CancellationToken): Promise<WorkspaceEdit> {
-		const renameResponse: any[] = await this.client.sendRequest('rettoua.renameRequest', {
+		const renameResponse: any[] | string = await this.client.sendRequest('rettoua.renameRequest', {
 			url: doc.uri.toString(),
 			newName: newName,
 			position: doc.offsetAt(position)
 		});
+		if (typeof renameResponse === 'string') {
+			return Promise.reject(renameResponse);
+		}
 		if (!renameResponse || renameResponse.length === 0) {
 			return;
 		}

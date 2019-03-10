@@ -69,7 +69,7 @@ connection.onRequest('rettoua.isRenameAllowed', (args: any) => {
 });
 
 connection.onRequest('rettoua.renameRequest', (args: any) => {
-	return translationProvider.calculateRenaming(args.url, args.position);
+	return translationProvider.calculateRenaming(args.url, args.position, args.newName);
 });
 
 connection.onRequest('rettoua.completionItemRequest', (args: any) => {
