@@ -11,6 +11,7 @@ import { HoverInfo } from './models/HoverInfo';
 import { readFileSync } from 'fs';
 import { uriToFilePath } from 'vscode-languageserver/lib/files';
 import { TransUnitBuilder } from './TransUnitBuilder';
+import { relative } from 'path';
 
 export class TranslationProvider {
 	private projects: Project[] = [];
@@ -237,9 +238,17 @@ export class TranslationProvider {
 		return false;
 	}
 
-	public calculateRenaming(url: string, position: number): any[] {
+	public calculateRenaming(url: string, position: number, newName: string): any[] | string {
 		const doc = this.getDocument(url);
 		if (doc) {
+			const name = newName.toLocaleLowerCase();
+			const translations = this.getSupportedTranslations(doc.url);
+			const isNewNameExist = !!translations.find(trans =>
+				!!trans.units.find(unit => unit.id.toLocaleLowerCase() === name)
+			);
+			if (isNewNameExist) {
+				return `Rename cannot be applied. Name ${newName} already defined in translation file.`;
+			}
 			const activeWords = <IdRange[]>this.words[doc.url];
 			if (activeWords && activeWords.length > 0) {
 				const expectedWord = activeWords.find(w => {
@@ -247,16 +256,16 @@ export class TranslationProvider {
 						&& position <= w.end;
 				});
 				if (expectedWord) {
-					const toRename = [];
+					let toRename = [];
 					Object.keys(this.words).forEach(url => {
-						const word: IdRange = this.words[url].find(w => {
+						const words: any[] = this.words[url].filter(w => {
 							return w.id === expectedWord.id;
+						}).map((w: IdRange) => <any>{
+							url: url,
+							range: w.idRange
 						});
-						if (word) {
-							toRename.push({
-								url: url,
-								range: word.idRange
-							});
+						if (words.length > 0) {
+							toRename = toRename.concat(words);
 						}
 					});
 					this.translations.forEach(trans => {
