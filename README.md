@@ -34,13 +34,13 @@ Supported features:
 
 ### IntelliSense
 
-<img src="./images/intellisense.gif" width="400">
+<img src="https://github.com/rettoua/angular-i18n-validator/raw/master/images/intellisense.gif" width="400">
 
 ### Rename
 
-<img src="./images/rename.gif" width="600">
+<img src="https://github.com/rettoua/angular-i18n-validator/raw/master/images/rename.gif" width="600">
 
 ### Generate translation unit(-s)
 
-<img src="./images/translation_units_generation.gif" width="600">
+<img src="https://github.com/rettoua/angular-i18n-validator/raw/master/images/translation_units_generation.gif" width="600" /> 
 
