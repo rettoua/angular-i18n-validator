@@ -5,8 +5,7 @@ import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
-	TransportKind,
-	TextDocument
+	TransportKind
 } from 'vscode-languageclient';
 import { FileController } from './file.controller';
 import { HoverController } from './hover.controller';
@@ -110,6 +109,10 @@ export async function activate(context: ExtensionContext) {
 
 	context.subscriptions.push(commands.registerCommand(RettouaCommands.GENERATE_TRANSLATION, (args) => {
 		client.sendNotification('custom/generate_translations', [args]);
+	}, this));
+
+	context.subscriptions.push(commands.registerCommand(RettouaCommands.REMOVE_TRANSLATIONS, (args) => {
+		client.sendNotification('custom/remove_translations', args);
 	}, this));
 }
 

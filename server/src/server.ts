@@ -93,7 +93,11 @@ connection.onNotification("custom/htmlFiles", (urls: any[]) => {
 });
 
 connection.onNotification("custom/generate_translations", (commands: GenerateTranslationCommand[]) => {
-	translationProvider.onGenerateTranslation(commands);
+	translationProvider.onGenerateTranslations(commands);
+});
+
+connection.onNotification("custom/remove_translations", (translationToRemove: string) => {
+	translationProvider.onRemoveTranslations(translationToRemove);
 });
 
 // Make the text document manager listen on the connection

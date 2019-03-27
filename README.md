@@ -14,6 +14,9 @@ Supported features:
 - `Rename` applys changes for both `html` template and translation file
 - `Generate translation unit(-s)` for a single or bulk translation units generating
 
+New in 1.2.0:
+- Command for `removing translations` and all references to it
+
 
 ### Checks translations existence and showing available ones in the hover
 

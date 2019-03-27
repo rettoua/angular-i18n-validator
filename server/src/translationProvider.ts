@@ -1,15 +1,15 @@
-import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Range, WorkspaceEdit } from 'vscode-languageserver';
+import { TextDocument, DiagnosticSeverity, Diagnostic, Connection, TextDocuments, Range, WorkspaceEdit, RegistrationRequest, TextEdit, TextDocumentEdit, TextDocumentIdentifier, VersionedTextDocumentIdentifier } from 'vscode-languageserver';
 import { Project } from './project.model';
 
 import matcher = require('matcher');
 import normalize = require('normalize-path');
 import { TranslationParser } from './translationParser';
-import { IdRange, GenerateTranslation, GenerateTranslationCommand } from './models/IdRange';
+import { IdRange, GenerateTranslation, GenerateTranslationCommand, RemoveTranslation } from './models/IdRange';
 import { Translation } from './models/Translation';
 import { HoverBuilder } from './hoverBuilder';
 import { HoverInfo } from './models/HoverInfo';
 import { readFileSync } from 'fs';
-import { uriToFilePath } from 'vscode-languageserver/lib/files';
+import { uriToFilePath, FileSystem } from 'vscode-languageserver/lib/files';
 import { TransUnitBuilder } from './TransUnitBuilder';
 import { relative } from 'path';
 
@@ -40,7 +40,34 @@ export class TranslationProvider {
 		});
 	}
 
-	public onGenerateTranslation(args: GenerateTranslationCommand[]): void {
+	public onRemoveTranslations(translationToRemove: string): void {
+		let documentEdits = this.translations.map(t => {
+			const units = t.units.filter(u => u.id === translationToRemove);
+			if (units.length === 0) { return; }
+
+			const edits = units.map(u => TextEdit.replace(u.range, ''));
+			return TextDocumentEdit.create(VersionedTextDocumentIdentifier.create(t.documentUri, null), edits)
+		}).filter(value => !!value);
+
+		documentEdits = documentEdits.concat(Object.keys(this.words).map(url => {
+			const idRanges: IdRange[] = this.words[url];
+			const units = idRanges.filter(r => r.id === translationToRemove);
+			if (units.length === 0) { return; }
+
+			const fileUrl = this.getDocumentUrl(url) || url;
+			const edits = units.map(u => TextEdit.replace(u.range, ''));
+			return TextDocumentEdit.create(VersionedTextDocumentIdentifier.create(fileUrl, null), edits);
+		}).filter(value => !!value));
+
+		if (documentEdits.length === 0) { return; }
+
+		const workspaceEdit = <WorkspaceEdit>{
+			documentChanges: documentEdits
+		};
+		this.connection.workspace.applyEdit(workspaceEdit);
+	}
+
+	public onGenerateTranslations(args: GenerateTranslationCommand[]): void {
 		args.forEach(command => {
 			const trans = this.translations.find(t => t.uri === command.uri);
 			if (trans) {
@@ -195,6 +222,7 @@ export class TranslationProvider {
 							if (!findTrans) {
 								return <GenerateTranslation>{
 									title: `Generate translation unit for ${t.project.label}`,
+									name: 'rettoua.generate_translation',
 									commandArgs: [<GenerateTranslationCommand>{
 										word: expectedWord.id,
 										uri: t.uri
@@ -210,11 +238,20 @@ export class TranslationProvider {
 						if (values.length > 1) {
 							const generateAllCommand = <GenerateTranslation>{
 								title: 'Generate translations for all...',
+								name: 'rettoua.generate_translation',
 								commandArgs: [...values.map(v => v.commandArgs[0])]
 							};
 							commands.push(generateAllCommand);
 						}
 						commands = commands.concat(...values);
+						{
+							const removeCommand = <RemoveTranslation>{
+								title: `Remove translations and references for '${expectedWord.id}'`,
+								name: 'rettoua.remove_translations',
+								commandArgs: expectedWord.id
+							}
+							commands.push(removeCommand);
+						}
 						return commands;
 					}
 				}
@@ -509,6 +546,14 @@ export class TranslationProvider {
 			debugger;
 		}
 		return null;
+	}
+
+	private getDocumentUrl(url: string): string {
+		const document = this.documents.all().find(document => {
+			const documentUrl = normalize(uriToFilePath(document.uri));
+			return documentUrl === url;
+		});
+		return document && document.uri;
 	}
 }
 
