@@ -40,10 +40,10 @@ export class TranslationParser {
 			}
 			const source = this.sourceRegex.exec(text);
 			const target = this.targetRegex.exec(text);
-			let range = null;
+			let targetRange = null;
 			if (target) {
 				const diff = (target[0].length - target[1].length) / 2;
-				range = <Range>{
+				targetRange = <Range>{
 					start: wrap.document.positionAt(value.index + target.index + diff),
 					end: wrap.document.positionAt(value.index + target.index + target[1].length + diff)
 				};
@@ -58,7 +58,11 @@ export class TranslationParser {
 				target: (target && target[1]) || '`<no translation>`',
 				sourceIndex: source && source.index,
 				targetIndex: target && target.index,
-				targetRange: range
+				targetRange: targetRange,
+				range: {
+					start: wrap.document.positionAt(value.index),
+					end: wrap.document.positionAt(value.index + text.length)
+				}
 			});
 		});
 		return units;

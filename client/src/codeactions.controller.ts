@@ -17,7 +17,7 @@ export class CodeActionsController {
 			.map(action => {
 				return <Command>{
 					title: action.title,
-					command: RettouaCommands.GENERATE_TRANSLATION,
+					command: action.name,
 					arguments: [action.commandArgs]
 				};
 			});
@@ -29,4 +29,5 @@ export default class RettouaCommands {
 	static GO_TO_FILE = 'rettoua.goto_file';
 	static GENERATE_TRANSLATION = 'rettoua.generate_translation';
 	static GENERATE_MULTIPLE_TRANSLATIONS = 'rettoua.generate_multiple_translations';
+	static REMOVE_TRANSLATIONS = 'rettoua.remove_translations';
 }
